@@ -1,0 +1,20 @@
+expr :=
+    operation
+    Id
+    Number
+
+operation :=
+    operator
+    (let Id expr expr)
+    (fun Id* expr)
+    (app Id expr*)
+    (seq expr+)
+
+operator :=
+    (+ expr+)
+    (- expr+)
+    (* expr+)
+    (/ expr expr+)
+    (& expr+)
+    (| expr+)
+    (! expr)
