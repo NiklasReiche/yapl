@@ -1,5 +1,5 @@
 import myscript.language._
-import myscript.interpreter._
+import myscript.Interpreter._
 
 import scala.language.implicitConversions
 
@@ -10,39 +10,39 @@ class InterpreterTest extends org.scalatest.FunSuite {
     implicit def booleanToBool(b: Boolean): Bool = Bool(b)
 
     test("add") {
-        assertResult(VNum(5)) {
-            interpret(Add(2, 3))
+        assertResult(VNum(12)) {
+            interpret(Add(List(2, 3, 7)))
         }
     }
 
     test("sub") {
         assertResult(VNum(-1)) {
-            interpret(Sub(2, 3))
+            interpret(Sub(List(2, 3)))
         }
     }
 
     test("mul") {
         assertResult(VNum(6)) {
-            interpret(Mul(2, 3))
+            interpret(Mul(List(2, 3)))
         }
     }
 
     test("div") {
         assertResult(VNum(2.5)) {
-            interpret(Div(5, 2))
+            interpret(Div(List(5, 2)))
         }
     }
 
     test("arith") {
         assertResult(VNum(7)) {
             interpret(
-                Add(
-                    Sub(5, 2),
-                    Mul(
+                Add(List(
+                    Sub(List(5, 2)),
+                    Mul(List(
                         2,
-                        Div(10, 5)
-                    )
-                )
+                        Div(List(10, 5))
+                    ))
+                ))
             )
         }
     }
