@@ -10,31 +10,31 @@ class InterpreterTest extends org.scalatest.FunSuite {
     implicit def booleanToBool(b: Boolean): Bool = Bool(b)
 
     test("add") {
-        assertResult(VNum(12)) {
+        assertResult(NumV(12)) {
             interpret(Add(List(2, 3, 7)))
         }
     }
 
     test("sub") {
-        assertResult(VNum(-1)) {
+        assertResult(NumV(-1)) {
             interpret(Sub(List(2, 3)))
         }
     }
 
     test("mul") {
-        assertResult(VNum(6)) {
+        assertResult(NumV(6)) {
             interpret(Mul(List(2, 3)))
         }
     }
 
     test("div") {
-        assertResult(VNum(2.5)) {
+        assertResult(NumV(2.5)) {
             interpret(Div(List(5, 2)))
         }
     }
 
     test("arith") {
-        assertResult(VNum(7)) {
+        assertResult(NumV(7)) {
             interpret(
                 Add(List(
                     Sub(List(5, 2)),

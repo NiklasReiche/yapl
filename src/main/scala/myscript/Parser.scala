@@ -9,10 +9,10 @@ object Parser {
     private def parseExpression(tokens: List[Token]): (Expression, List[Token]) = tokens match {
         case head :: tail => head match {
             case (TPunctuation, "(") =>
-                val (expr, r1) = parseOperation(tail)
-                r1 match {
+                val (expr, rest) = parseOperation(tail)
+                rest match {
                     case (TPunctuation, ")") :: rest => (expr, rest)
-                    case _ => sys.error(s"Expected ')', but got $r1")
+                    case _ => sys.error(s"Expected ')', but got $rest")
                 }
 
             case (TNumber, n) =>
@@ -48,30 +48,29 @@ object Parser {
     private def parseKeyword(tokens: List[Token]): (Expression, List[Token]) = tokens match {
         case head :: tail => head match {
             case (TSymbol, "let") =>
-                val (id, r1) = parseIdentifier(tail)
-                val (value, r2) = parseExpression(r1)
-                val (body, rest) = parseExpression(r2)
+                val (id, rest1) = parseIdentifier(tail)
+                val (value, rest2) = parseExpression(rest1)
+                val (body, rest) = parseExpression(rest2)
                 (Let(id, value, body), rest)
+
+            case (TSymbol, "fun") =>
+                val (params, rest) = parseNIdentifiers(tail)
+                val (body, rest2) = parseExpression(rest)
+                (Fun(params, body), rest2)
+
+            case (TSymbol, "app") =>
+                val (id, rest1) = parseIdentifier(tail)
+                val (args, rest2) = parseNExpressions(rest1)
+                (App(id, args), rest2)
+
             case _ => sys.error(s"Expected <let>, but got $head")
         }
         case _ => sys.error("Expected keyword, but got EOF")
     }
 
-    private def parseNAryOperator(tokens: List[Token]): (Expression, List[Token]) = {
-        def parseNextExpression(tokensInner: List[Token]): (List[Expression], List[Token]) = tokensInner match {
-            case head :: _ => head match {
-                case (TPunctuation, ")") => (Nil, tokensInner)
-                case _ =>
-                    val (expr, r) = parseExpression(tokensInner)
-                    val (lExpr, rest) = parseNextExpression(r)
-                    (expr :: lExpr, rest)
-            }
-            case Nil => sys.error("Expected <)> or expression, but got EOF")
-        }
-
-        tokens match {
+    private def parseNAryOperator(tokens: List[Token]): (Expression, List[Token]) = tokens match {
             case head :: tail =>
-                val (operands, rest) = parseNextExpression(tail)
+                val (operands, rest) = parseNExpressions(tail)
                 head match {
                     case (TOperator, "+") => (Add(operands), rest)
                     case (TOperator, "-") => (Sub(operands), rest)
@@ -84,5 +83,26 @@ object Parser {
                 }
             case Nil => sys.error("Expected operator, but got EOF")
         }
+
+    private def parseNIdentifiers(tokens: List[Token]): (List[Id], List[Token]) = tokens match {
+        case head :: _ => head match {
+            case (TSymbol, _) =>
+                val (id, rest) = parseIdentifier(tokens)
+                val (listIds, rest2) = parseNIdentifiers(rest)
+                (id :: listIds, rest2)
+            case _ => (Nil, tokens)
+        }
+        case _ => sys.error("EOF")
+    }
+
+    private def parseNExpressions(tokens: List[Token]): (List[Expression], List[Token]) = tokens match {
+        case head :: _ => head match {
+            case (TPunctuation, "(") | (TNumber, _) | (TSymbol, _) =>
+                val (expr, rest) = parseExpression(tokens)
+                val (listExpr, rest2) = parseNExpressions(rest)
+                (expr :: listExpr, rest2)
+            case _ => (Nil, tokens)
+        }
+        case _ => sys.error("EOF")
     }
 }
