@@ -16,3 +16,6 @@ case class And(operands: List[Expression]) extends Expression
 case class Or(operands: List[Expression]) extends Expression
 
 case class Let(name: Id, value: Expression, body: Expression) extends Expression
+
+case class Fun(params: List[Id], body: Expression) extends Expression
+case class App(fun: Expression, args: List[Expression]) extends Expression

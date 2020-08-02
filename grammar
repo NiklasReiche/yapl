@@ -1,4 +1,4 @@
-expr :=
+expression :=
     operation
     Id
     Number
@@ -11,10 +11,10 @@ operation :=
     (seq expr+)
 
 operator :=
-    (+ expr+)
-    (- expr+)
-    (* expr+)
-    (/ expr expr+)
-    (& expr+)
-    (| expr+)
-    (! expr)
+    (+ expression+)
+    (- expression+)
+    (* expression expression+)
+    (/ expression expression+)
+    (& expression+)
+    (| expression+)
+    (! expression)
