@@ -15,7 +15,14 @@ case class Not(operands: List[Expression]) extends Expression
 case class And(operands: List[Expression]) extends Expression
 case class Or(operands: List[Expression]) extends Expression
 
+case class Equal(operands: List[Expression]) extends Expression
+case class Greater(operands: List[Expression]) extends Expression
+case class Less(operands: List[Expression]) extends Expression
+
 case class Let(name: Id, value: Expression, body: Expression) extends Expression
+case class Rec(name: Id, value: Expression, body: Expression) extends Expression
 
 case class Fun(params: List[Id], body: Expression) extends Expression
 case class App(fun: Expression, args: List[Expression]) extends Expression
+
+case class If(test: Expression, ifCase: Expression, elseCase: Expression) extends Expression

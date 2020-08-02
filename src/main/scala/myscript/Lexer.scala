@@ -11,10 +11,10 @@ object Lexer {
     private def lexInner(stream: List[Char]): List[Token] = stream match {
         case Nil => Nil
         case head :: tail => head match {
-            case ' ' | '\n' =>
+            case ' ' | '\n' | '\r' | '\t' =>
                 lexInner(tail)
 
-            case '+' | '-' | '*' | '/' | '&' | '|' | '!' =>
+            case '+' | '-' | '*' | '/' | '&' | '|' | '!' | '=' | '<' | '>' =>
                 (TOperator, head.toString) :: lexInner(tail)
 
             case '(' | ')' =>
@@ -27,7 +27,7 @@ object Lexer {
                 scanNumber(tail, head.toString)
 
             case _ =>
-                sys.error(s"Unknown symbol: $head")
+                sys.error(s"Unknown symbol: ${escape(head.toString)}")
         }
     }
 
@@ -49,5 +49,10 @@ object Lexer {
             case _ =>
                 (TSymbol, acc) :: lexInner(stream)
         }
+    }
+
+    private def escape(raw: String): String = {
+        import scala.reflect.runtime.universe._
+        Literal(Constant(raw)).toString
     }
 }

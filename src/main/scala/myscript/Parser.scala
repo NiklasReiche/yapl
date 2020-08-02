@@ -18,8 +18,11 @@ object Parser {
             case (TNumber, n) =>
                 (Num(n.toDouble), tail)
 
-            case (TSymbol, s) =>
-                (Id(Symbol(s)), tail)
+            case (TSymbol, s) => s match {
+                case "true" => (Bool(true), tail)
+                case "false" => (Bool(false), tail)
+                case _ => (Id(Symbol(s)), tail)
+            }
 
             case _ => sys.error("Expected <(> or <Number> or <Identifier>")
         }
@@ -47,23 +50,32 @@ object Parser {
 
     private def parseKeyword(tokens: List[Token]): (Expression, List[Token]) = tokens match {
         case head :: tail => head match {
-            case (TSymbol, "let") =>
-                val (id, rest1) = parseIdentifier(tail)
-                val (value, rest2) = parseExpression(rest1)
-                val (body, rest) = parseExpression(rest2)
-                (Let(id, value, body), rest)
+            case (TSymbol, "let") | (TSymbol, "rec") =>
+                val (id, r1) = parseIdentifier(tail)
+                val (value, r2) = parseExpression(r1)
+                val (body, r3) = parseExpression(r2)
+                head match {
+                    case (TSymbol, "let") => (Let(id, value, body), r3)
+                    case (TSymbol, "rec") => (Rec(id, value, body), r3)
+                }
 
             case (TSymbol, "fun") =>
-                val (params, rest) = parseNIdentifiers(tail)
-                val (body, rest2) = parseExpression(rest)
-                (Fun(params, body), rest2)
+                val (params, r) = parseNIdentifiers(tail)
+                val (body, r2) = parseExpression(r)
+                (Fun(params, body), r2)
 
             case (TSymbol, "app") =>
-                val (id, rest1) = parseIdentifier(tail)
-                val (args, rest2) = parseNExpressions(rest1)
-                (App(id, args), rest2)
+                val (id, r1) = parseIdentifier(tail)
+                val (args, r2) = parseNExpressions(r1)
+                (App(id, args), r2)
 
-            case _ => sys.error(s"Expected <let>, but got $head")
+            case (TSymbol, "if") =>
+                val (test, r1) = parseExpression(tail)
+                val (ifCase, r2) = parseExpression(r1)
+                val (elseCase, r3) = parseExpression(r2)
+                (If(test, ifCase, elseCase), r3)
+
+            case _ => sys.error(s"Expected keyword, but got $head")
         }
         case _ => sys.error("Expected keyword, but got EOF")
     }
@@ -76,9 +88,14 @@ object Parser {
                     case (TOperator, "-") => (Sub(operands), rest)
                     case (TOperator, "*") => (Mul(operands), rest)
                     case (TOperator, "/") => (Div(operands), rest)
+
                     case (TOperator, "&") => (And(operands), rest)
                     case (TOperator, "|") => (Or(operands), rest)
                     case (TOperator, "!") => (Not(operands), rest)
+
+                    case (TOperator, "=") => (Equal(operands), rest)
+                    case (TOperator, "<") => (Less(operands), rest)
+                    case (TOperator, ">") => (Greater(operands), rest)
                     case _ => sys.error(s"Encountered unknown operator <$head>")
                 }
             case Nil => sys.error("Expected operator, but got EOF")
@@ -87,9 +104,9 @@ object Parser {
     private def parseNIdentifiers(tokens: List[Token]): (List[Id], List[Token]) = tokens match {
         case head :: _ => head match {
             case (TSymbol, _) =>
-                val (id, rest) = parseIdentifier(tokens)
-                val (listIds, rest2) = parseNIdentifiers(rest)
-                (id :: listIds, rest2)
+                val (id, r1) = parseIdentifier(tokens)
+                val (listIds, rest) = parseNIdentifiers(r1)
+                (id :: listIds, rest)
             case _ => (Nil, tokens)
         }
         case _ => sys.error("EOF")
@@ -98,9 +115,9 @@ object Parser {
     private def parseNExpressions(tokens: List[Token]): (List[Expression], List[Token]) = tokens match {
         case head :: _ => head match {
             case (TPunctuation, "(") | (TNumber, _) | (TSymbol, _) =>
-                val (expr, rest) = parseExpression(tokens)
-                val (listExpr, rest2) = parseNExpressions(rest)
-                (expr :: listExpr, rest2)
+                val (expr, r1) = parseExpression(tokens)
+                val (listExpr, rest) = parseNExpressions(r1)
+                (expr :: listExpr, rest)
             case _ => (Nil, tokens)
         }
         case _ => sys.error("EOF")

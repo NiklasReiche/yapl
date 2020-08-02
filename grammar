@@ -2,13 +2,19 @@ expression :=
     operation
     Id
     Number
+    Boolean
+
+Boolean :=
+    true
+    false
 
 operation :=
     operator
-    (let Id expr expr)
-    (fun Id* expr)
-    (app Id expr*)
-    (seq expr+)
+    control
+    (let Id expression expression)
+    (rec Id expression expression)
+    (fun Id* expression)
+    (app Id expression*)
 
 operator :=
     (+ expression+)
@@ -18,3 +24,9 @@ operator :=
     (& expression+)
     (| expression+)
     (! expression)
+    (= expression expression)
+    (< expression expression)
+    (> expression expression)
+
+control :=
+    (if expression expression expression)
