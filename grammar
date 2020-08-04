@@ -9,24 +9,32 @@ Boolean :=
     false
 
 operation :=
-    operator
-    control
+    arithmetic_operator
+    boolean_operator
+    comparison_operator
+    control_structure
     (let Id expression expression)
     (rec Id expression expression)
-    (fun Id* expression)
-    (app Id expression*)
+    (func Id* expression)
+    (call Id expression*)
+    (set Id expression)
 
-operator :=
+arithmetic_operator :=
     (+ expression+)
     (- expression+)
     (* expression expression+)
     (/ expression expression+)
+
+boolean_operator :=
     (& expression+)
     (| expression+)
     (! expression)
+
+comparison_operator :=
     (= expression expression)
     (< expression expression)
     (> expression expression)
 
-control :=
+control_structure :=
     (if expression expression expression)
+    (seq expression*)

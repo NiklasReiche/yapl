@@ -59,12 +59,12 @@ object Parser {
                     case (TSymbol, "rec") => (Rec(id, value, body), r3)
                 }
 
-            case (TSymbol, "fun") =>
+            case (TSymbol, "func") =>
                 val (params, r) = parseNIdentifiers(tail)
                 val (body, r2) = parseExpression(r)
                 (Fun(params, body), r2)
 
-            case (TSymbol, "app") =>
+            case (TSymbol, "call") =>
                 val (id, r1) = parseIdentifier(tail)
                 val (args, r2) = parseNExpressions(r1)
                 (App(id, args), r2)
@@ -74,6 +74,15 @@ object Parser {
                 val (ifCase, r2) = parseExpression(r1)
                 val (elseCase, r3) = parseExpression(r2)
                 (If(test, ifCase, elseCase), r3)
+
+            case (TSymbol, "seq") =>
+                val (statements, r1) = parseNExpressions(tail)
+                (Seq(statements), r1)
+
+            case (TSymbol, "set") =>
+                val (id, r1) = parseIdentifier(tail)
+                val (value, r2) = parseExpression(r1)
+                (Set(id, value), r2)
 
             case _ => sys.error(s"Expected keyword, but got $head")
         }

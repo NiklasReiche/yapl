@@ -22,7 +22,10 @@ case class Less(operands: List[Expression]) extends Expression
 case class Let(name: Id, value: Expression, body: Expression) extends Expression
 case class Rec(name: Id, value: Expression, body: Expression) extends Expression
 
+case class Set(name: Id, value: Expression) extends Expression
+
 case class Fun(params: List[Id], body: Expression) extends Expression
 case class App(fun: Expression, args: List[Expression]) extends Expression
 
 case class If(test: Expression, ifCase: Expression, elseCase: Expression) extends Expression
+case class Seq(statements: List[Expression]) extends Expression
