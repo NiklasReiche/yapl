@@ -1,36 +1,76 @@
-# myscript - A simple programming language
-
+# yapl - Yet Another Programming Language
 Just a small personal project for learning purposes.
 
 #### Project components
-The project consists of a lexer, a parser, and an interpreter for a simple functional programming language.
+The project consists of a lexer, a parser, and an interpreter for a simple programming language.
 
 #### Language description
-- prefix notation for operators and function calls, e.g. ```(+ 1 2)``` or ```(func 42 a b)```
+- prefix notation, e.g. ```(+ 1 2)```
 - dynamic and strong typing
-- eager evaluation of expressions
-- first class functions
-- default operators ```+, -, *, /, &, |``` are n-ary, e.g. ```(+ 1 2 3)``` evaluates to 6
-- unary operators ```-, !```, e.g. ```(- 3)```
-- expressions can be simplified by defining constants, e.g. ```(let a (+ 2 5) (* 2 a))``` where a=7 and the result is 2*a=14
+- eager expression evaluation
+- n-ary default operators ```+, -, *, /, &, |``` 
 
-### Current functionalities
-- arithmetic operations
-- named constants
+### Current features
+- arithmetic and boolean operations
+- variables
+- first class functions (with recursion)
+- flow control (sequences, if statements)
 
-### Planned
-- boolean operations
-- functions
-- recursion
-- sequence of expressions
-- flow control structures (if, switch, loops)
-- mutable state
-- objects
 
 ### Examples
-- Arithmetic operation using a named constant. Calculates ```(x-1)*42``` where ```x=12```
+- Calculates the factorial of 5:
 ```
-(let x (+ 2 4 6) (
-  (* (- x 1) 42)
-))
+(rec factorial 
+     (func n
+        (if (= n 1)
+            1
+            (* n (call factorial (- n 1)))
+        )
+     )
+     (call factorial 5)
+)
+```
+
+### Grammar
+```
+expression :=
+    operation
+    Id
+    Number
+    Boolean
+
+Boolean :=
+    true
+    false
+
+operation :=
+    arithmetic_operator
+    boolean_operator
+    comparison_operator
+    control_structure
+    (let Id expression expression)
+    (rec Id expression expression)
+    (func Id* expression)
+    (call Id expression*)
+    (set Id expression)
+
+arithmetic_operator :=
+    (+ expression+)
+    (- expression+)
+    (* expression expression+)
+    (/ expression expression+)
+
+boolean_operator :=
+    (& expression+)
+    (| expression+)
+    (! expression)
+
+comparison_operator :=
+    (= expression expression)
+    (< expression expression)
+    (> expression expression)
+
+control_structure :=
+    (if expression expression expression)
+    (seq expression*)
 ```
