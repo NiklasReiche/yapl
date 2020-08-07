@@ -1,6 +1,9 @@
 package myscript.language
 
+sealed class Global(val id: Id, val value: Expression)
 sealed abstract class Expression
+
+case class Void() extends Expression
 
 case class Num(n: Double) extends Expression
 case class Bool(b: Boolean) extends Expression
@@ -19,8 +22,7 @@ case class Equal(operands: List[Expression]) extends Expression
 case class Greater(operands: List[Expression]) extends Expression
 case class Less(operands: List[Expression]) extends Expression
 
-case class Let(name: Id, value: Expression, body: Expression) extends Expression
-case class Rec(name: Id, value: Expression, body: Expression) extends Expression
+case class Let(declarations: List[(Id, Expression)], body: Expression) extends Expression
 
 case class Set(name: Id, value: Expression) extends Expression
 

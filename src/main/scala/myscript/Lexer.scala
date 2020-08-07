@@ -17,7 +17,7 @@ object Lexer {
             case '+' | '-' | '*' | '/' | '&' | '|' | '!' | '=' | '<' | '>' =>
                 (TOperator, head.toString) :: lexInner(tail)
 
-            case '(' | ')' =>
+            case '(' | ')' | '[' | ']' =>
                 (TPunctuation, head.toString) :: lexInner(tail)
 
             case alpha() =>

@@ -4,7 +4,10 @@ import scala.collection.Map
 import myscript.language._
 
 object Interpreter {
-    def interpret(expr: Expression): Value = interp(expr, Map.empty, Map.empty)._1
+    def interpret(expr: Expression, globals: List[Global]): Value = {
+        val (globalEnv, store) = interpGlobals(globals)
+        interp(expr, globalEnv, store)._1
+    }
 
     type Location = Int
     type Env = Map[Symbol, Location]
@@ -16,6 +19,15 @@ object Interpreter {
         _currentLocation += 1
         _currentLocation
     }
+
+    private def interpGlobals(globals: List[Global]): (Env, Store) =
+        globals.foldLeft((Map.empty: Env, Map.empty: Store))((acc: (Env, Store), global: Global) => {
+            var (env, store) = (collection.mutable.Map() ++ acc._1, acc._2)
+            val (value, s1) = interp(global.value, env, store)
+            val newLocation = nextLocation
+            env += global.id.name -> newLocation
+            (env, s1 ++ Map(newLocation -> value))
+        })
 
     private def interp(expr: Expression, env: Env, store: Store): (Value, Store) = {
         def interpNAryNumOp(operands: List[Expression],
@@ -50,6 +62,23 @@ object Interpreter {
                 })
             (BoolV(result), newStore)
         }
+        def interpIdValuePairs(pairs: List[(Id, Expression)], env: Env, store: Store): (Env, Store) =
+            pairs.foldLeft((env, store))((acc, pair) => {
+                val (e, s) = acc
+                val (id, valueExpr) = pair
+                val (value, s1) = interp(valueExpr, env, s)
+                val newLocation = nextLocation
+                (e ++ Map(id.name -> newLocation), s1 ++ Map(newLocation -> value))
+            })
+        def interpIdValuePairsRec(pairs: List[(Id, Expression)], env: Env, store: Store): (Env, Store) =
+            pairs.foldLeft((env, store))((acc, pair) => {
+                val (e, s) = (collection.mutable.Map() ++ acc._1, acc._2)
+                val (id, valueExpr) = pair
+                val (value, s1) = interp(valueExpr, env, s)
+                val newLocation = nextLocation
+                e += id.name -> newLocation
+                (e, s1 ++ Map(newLocation -> value))
+            })
 
         expr match {
             // Terminal expressions ------------------------------------------------------------------------------------
@@ -123,17 +152,9 @@ object Interpreter {
                 }
 
             // Special constructs --------------------------------------------------------------------------------------
-            case Let(Id(name), valueExpr, body) =>
-                val (value, s1) = interp(valueExpr, env, store)
-                val newLocation = nextLocation
-                interp(body, env ++ Map(name -> newLocation), s1 ++ Map(newLocation -> value))
-
-            case Rec(Id(name), valueExpr, body) =>
-                var recEnv = collection.mutable.Map() ++ env
-                val (value, s1) = interp(valueExpr, recEnv, store)
-                val newLocation = nextLocation
-                recEnv += name -> newLocation
-                interp(body, recEnv, s1 ++ Map(newLocation -> value))
+            case Let(declarations, body) =>
+                val (letEnv, letStore) = interpIdValuePairsRec(declarations, env, store)
+                interp(body, letEnv, letStore)
 
             case App(funExpr, args) =>
                 interp(funExpr, env, store) match {
@@ -141,15 +162,7 @@ object Interpreter {
                         if (params.length != args.length)
                             sys.error(s"Expected ${params.length} arguments, but got ${args.length}")
 
-                        val (funcEnv, funcStore) = (params zip args).foldLeft((fEnv, s1))(
-                            (acc: (Env, Store), elem: (Id, Expression)) => {
-                                val (prevEnv, prevStore) = acc
-                                val (param, arg) = elem
-                                val (argValue, s2) = interp(arg, env, prevStore)
-                                val newLocation = nextLocation
-                                (prevEnv ++ Map(param.name -> newLocation), s2 ++ Map(newLocation -> argValue))
-                            }
-                        )
+                        val (funcEnv, funcStore) = interpIdValuePairs(params zip args, fEnv, s1)
                         interp(body, funcEnv, funcStore)
                     case _ => sys.error("Can only call functions")
                 }
@@ -168,7 +181,7 @@ object Interpreter {
             }
 
             case Seq(statements) =>
-                statements.foldLeft((Void(): Value, store: Store))(
+                statements.foldLeft((VoidV(): Value, store: Store))(
                     (acc: (Value, Store), expr: Expression) => interp(expr, env, acc._2)
                 )
         }
