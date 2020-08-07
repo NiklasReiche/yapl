@@ -1,4 +1,4 @@
-name := "myscript"
+name := "yapl"
 
 version := "0.1"
 
