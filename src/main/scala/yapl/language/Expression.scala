@@ -1,4 +1,4 @@
-package myscript.language
+package yapl.language
 
 sealed class Global(val id: Id, val value: Expression)
 sealed abstract class Expression

@@ -1,7 +1,10 @@
-package myscript
+package yapl
 
 import scala.collection.Map
-import myscript.language._
+import yapl.language._
+
+class TypeError(val msg: String) extends Exception
+class SemanticError(val msg: String) extends Exception
 
 object Interpreter {
     def interpret(expr: Expression, globals: List[Global]): Value = {
@@ -62,23 +65,6 @@ object Interpreter {
                 })
             (BoolV(result), newStore)
         }
-        def interpIdValuePairs(pairs: List[(Id, Expression)], env: Env, store: Store): (Env, Store) =
-            pairs.foldLeft((env, store))((acc, pair) => {
-                val (e, s) = acc
-                val (id, valueExpr) = pair
-                val (value, s1) = interp(valueExpr, env, s)
-                val newLocation = nextLocation
-                (e ++ Map(id.name -> newLocation), s1 ++ Map(newLocation -> value))
-            })
-        def interpIdValuePairsRec(pairs: List[(Id, Expression)], env: Env, store: Store): (Env, Store) =
-            pairs.foldLeft((env, store))((acc, pair) => {
-                val (e, s) = (collection.mutable.Map() ++ acc._1, acc._2)
-                val (id, valueExpr) = pair
-                val (value, s1) = interp(valueExpr, env, s)
-                val newLocation = nextLocation
-                e += id.name -> newLocation
-                (e, s1 ++ Map(newLocation -> value))
-            })
 
         expr match {
             // Terminal expressions ------------------------------------------------------------------------------------
@@ -153,7 +139,7 @@ object Interpreter {
 
             // Special constructs --------------------------------------------------------------------------------------
             case Let(declarations, body) =>
-                val (letEnv, letStore) = interpIdValuePairsRec(declarations, env, store)
+                val (letEnv, letStore) = interpIdValuePairsRec(declarations, env, env, store)
                 interp(body, letEnv, letStore)
 
             case App(funExpr, args) =>
@@ -162,7 +148,7 @@ object Interpreter {
                         if (params.length != args.length)
                             sys.error(s"Expected ${params.length} arguments, but got ${args.length}")
 
-                        val (funcEnv, funcStore) = interpIdValuePairs(params zip args, fEnv, s1)
+                        val (funcEnv, funcStore) = interpIdValuePairs(params zip args, env, fEnv, s1)
                         interp(body, funcEnv, funcStore)
                     case _ => sys.error("Can only call functions")
                 }
@@ -186,4 +172,41 @@ object Interpreter {
                 )
         }
     }
+
+    /**
+     * Creates bindings for multiple identifiers.
+     *
+     * @param pairs   The pairs of (identifier = value).
+     * @param evalEnv The environment in which the vales are evaluated.
+     * @param accEnv  The environment to which the new bindings are appended.
+     * @param store   The store to use during evaluation and appending.
+     * @return A new environment and store containing bindings for each identifier in pairs.
+     */
+    private def interpIdValuePairs(pairs: List[(Id, Expression)], evalEnv: Env, accEnv: Env, store: Store): (Env, Store) =
+        pairs.foldLeft((accEnv, store))((acc, pair) => {
+            val (e, s) = acc
+            val (id, valueExpr) = pair
+            val (value, s1) = interp(valueExpr, evalEnv, s)
+            val newLocation = nextLocation
+            (e ++ Map(id.name -> newLocation), s1 ++ Map(newLocation -> value))
+        })
+
+    /**
+     * Creates recursive bindings for multiple identifiers.
+     *
+     * @param pairs   The pairs of (identifier = value).
+     * @param evalEnv The environment in which the vales are evaluated.
+     * @param accEnv  The environment to which the new bindings are appended.
+     * @param store   The store to use during evaluation and appending.
+     * @return A new environment and store containing bindings for each identifier in pairs.
+     */
+    private def interpIdValuePairsRec(pairs: List[(Id, Expression)], evalEnv: Env, accEnv: Env, store: Store): (Env, Store) =
+        pairs.foldLeft((accEnv, store))((acc, pair) => {
+            val recEnv = collection.mutable.Map() ++ evalEnv
+            val (id, valueExpr) = pair
+            val (value, s1) = interp(valueExpr, recEnv, acc._2)
+            val newLocation = nextLocation
+            recEnv += id.name -> newLocation
+            (acc._1 ++ Map(id.name -> newLocation), s1 ++ Map(newLocation -> value))
+        })
 }

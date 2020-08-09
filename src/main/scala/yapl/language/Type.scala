@@ -1,4 +1,4 @@
-package myscript.language
+package yapl.language
 
 sealed abstract class Type
 

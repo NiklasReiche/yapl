@@ -1,0 +1,10 @@
+(global fact
+    (func [n]
+        (if (= n 1)
+            1
+            (* n (call fact (- n 1)))
+        )
+    )
+)
+
+(call fact 5)

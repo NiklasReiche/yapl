@@ -1,4 +1,4 @@
-import myscript.language.{BoolV, NumV, VoidV}
+import yapl.language.{BoolV, NumV, VoidV}
 
 class PipelineTest extends org.scalatest.FunSuite {
 
@@ -68,51 +68,55 @@ class PipelineTest extends org.scalatest.FunSuite {
         }
     }
 
-    test("let") {
+    test("simple let") {
         assertResult(NumV(6)) {
             Main.run(
                 """
-                  (let [x (+ 5 2)]
-                        (- x 1)
-                  )
-                  """)
-        }
-        assertResult(NumV(52)) {
-            Main.run("""
-                  |(let [x (+ 1 3)] [y 42] [z (* 3 2)]
-                  | (+ x y z)
+                  |(let [x (+ 5 2)]
+                  |  (- x 1)
                   |)
-                  |""".stripMargin
-            )
+                  |""".stripMargin, debug = true)
         }
     }
 
-    test("func") {
+    test("multiple let") {
+        assertResult(NumV(52)) {
+            Main.run(
+                """
+                  |(let [x (+ 1 3)]
+                  |     [y 42]
+                  |     [z (* 3 2)]
+                  |  (+ x y z)
+                  |)
+                  |""".stripMargin, debug = true)
+        }
+    }
+
+    test("let func") {
         assertResult(NumV(44)) {
             Main.run(
                 """
-                  (let a (func [] 42)
-                    (let [f (func [x y] (+ x y))]
-                      (call f 2 (call a))
-                    )
-                  )
-                  """)
+                  |(let [a (func [] 42)]
+                  |     [f (func [x y] (+ x y))]
+                  |  (call f 2 (call a))
+                  |)
+                  |""".stripMargin, debug = true)
         }
     }
 
-    test("rec") {
+    test("let rec") {
         assertResult(NumV(120)) {
             Main.run(
                 """
-                  (let [factorial (func [n]
-                                      (if (= n 1)
-                                            1
-                                            (* n (call factorial (- n 1)))
-                                      )
-                                 )]
-                    (call factorial 5)
-                  )
-                  """)
+                  |(let [factorial (func [n]
+                  |                  (if (= n 1)
+                  |                      1
+                  |                      (* n (call factorial (- n 1)))
+                  |                  )
+                  |                )]
+                  |  (call factorial 5)
+                  |)
+                  |""".stripMargin, debug = true)
         }
     }
 
@@ -125,11 +129,11 @@ class PipelineTest extends org.scalatest.FunSuite {
             Main.run(
                 """
                   |(seq
-                  |     (+ 5 1)
-                  |     5
-                  |     42
+                  |  (+ 5 1)
+                  |  5
+                  |  42
                   |)
-                  |""".stripMargin)
+                  |""".stripMargin, debug = true)
         }
     }
 
@@ -138,12 +142,12 @@ class PipelineTest extends org.scalatest.FunSuite {
             Main.run(
                 """
                   |(let [x 0]
-                  | (seq
-                  |     (set x 40)
-                  |     (+ x 2)
-                  | )
+                  |  (seq
+                  |    (set x 40)
+                  |    (+ x 2)
+                  |  )
                   |)
-                  |""".stripMargin)
+                  |""".stripMargin, debug = true)
         }
     }
 
@@ -151,14 +155,13 @@ class PipelineTest extends org.scalatest.FunSuite {
         assertResult(NumV(29)) {
             Main.run(
                 """
-                  |(global f (func x (* x x)))
+                  |(global f (func [x] (* x x)))
                   |(global a 25)
                   |
-                  |(let b 2
+                  |(let [b 2]
                   |  (+ a (call f b))
                   |)
-                  |""".stripMargin
-            )
+                  |""".stripMargin, debug = true)
         }
 
         assertResult(NumV(29)) {
@@ -170,9 +173,8 @@ class PipelineTest extends org.scalatest.FunSuite {
                   |  (+ a (call f b))
                   |)
                   |
-                  |(global f (func x (* x x)))
-                  |""".stripMargin
-            )
+                  |(global f (func [x] (* x x)))
+                  |""".stripMargin, debug = true)
         }
 
         assertResult(NumV(29)) {
@@ -186,9 +188,23 @@ class PipelineTest extends org.scalatest.FunSuite {
                   |
                   |(+ 1 2)
                   |
-                  |(global f (func x (* x x)))
-                  |""".stripMargin
-            )
+                  |(global f (func [x] (* x x)))
+                  |""".stripMargin, debug = true)
+        }
+
+        assertResult(NumV(120)) {
+            Main.run(
+                """(global factorial
+                  |  (func [n]
+                  |    (if (= n 1)
+                  |        1
+                  |        (* n (call factorial (- n 1)))
+                  |    )
+                  |  )
+                  |)
+                  |
+                  |(call factorial 5)
+                  |""".stripMargin, debug = true)
         }
     }
 }
