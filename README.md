@@ -4,31 +4,87 @@ Just a small personal project for learning purposes.
 #### Project components
 The project consists of a lexer, a parser, and an interpreter for a simple programming language.
 
-#### Language description
-- prefix notation, e.g. ```(+ 1 2)```
+#### Language properties
+- expression-oriented
+- prefix notation, e.g. `(+ 1 2)`
 - dynamic and strong typing
 - eager expression evaluation
-- n-ary default operators ```+, -, *, /, &, |``` 
 
-### Current features
+#### Current features
 - arithmetic, boolean, comparison operations
-- variables
-- first class functions (with recursion)
+- global and local variables
+- first-class functions and first-class classes
 - flow control (sequences, if statements)
 
-### Language Components
-- Expressions always start with ```(``` followed by the operator and parameters, and end with ```)```.
-For example, `(+ 3 6)` adds two numbers. The basic arithmetic and boolean operators are n-ary, so 
-adding more numbers simply becomes `(+ 2 7 3 1 3)`.
-- Variables can be global or local. Global variables are defined by `(global name value)`, while local
-variables are used in `let` expressions, e.g. `(let [x 5] [y (+ 4 2)] (+ x y))`. While only one variable
-can be defined per `global` statement, multiple variables can be specified in a `let` expression. 
-The scope of local variables is the expression which is supplied as the last parameter to the `let` operator. 
-Variables can be reassigned with the `set` operator.
-- Functions only exist as values, so in order to define a function a `func` expression must be assigned to an
-identifier using `global` or `let`. The `func` operator takes a list of parameter names and a function body expression.
+### Grammar
+See [grammar.md](grammar.md)
+
+### Language Documentation
+#### Basic values
+The basic values in YAPL are `Num`, which can be any decimal number, and `Bool`, which can be either `true` or `false`.
+There is no distinction between integer and floating-point numbers; all `Num` values are double precision floating-point
+numbers internally.
+
+#### Built-in operators
+The built-in arithmetic and boolean operators are n-ary. Like all expressions they are written in prefix notation.
+- Addition: `(+ 1 2 3 4)` evaluates to `10 : Num`
+- Subtraction: `(- 1 2 3 4)` evaluates to `-8 : Num`, `(- 2)` evaluates to `-2 : Num`
+- Multiplication: `(* 1 2 3 4)` evaluates to `24 : Num`
+- Division: `(/ 1 2 3 4)` evaluates to `0.0417 : Num`
+- And: `(& true false false)` evaluates to `false : Bool`
+- Or: `(| true false true)` evaluates to `true : Bool`
+- Not: `(! true)` evaluates to `false : Bool`
+- Equality: `(= 1 2)` evaluates to `false : Bool`
+- Less than: `(< 4 1)` evaluates to `false : Bool`
+- Greater than: `(> 4 1)` evaluates to `true : Bool`
+
+#### Variables
+Global variables are defined by `(global <name> <value>)`. The scope of global variables is the entire file. The `global`
+construct is only allowed at the top-level of a program.
+
+Local variables are defined in a `let` construct like `(let [x 1] [y 5] [z 3] <body>)`. The scope of these variables
+is the `<body>` expression.
+
+The value of a variable can be changed by the `set` operator, e.g. `(set x 42)`
+
+#### Flow control structures
+- If-else: `(if <test> <true-clause> <false-clause>)` evaluates the `<true-clause>` if `<test>` evaluates to `true`, else
+`<false-clause>` is evaluated.
+- Sequences: `(seq <expression> <expression> ...)` evaluates all given expressions. The result of the `seq` operator is
+the result of the last given expression.
+
+#### Functions
+Functions only exist as values, so in order to define a named function a `func` expression must be assigned to an
+identifier using `global` or `let`. Of course, a `func` expression may also be used as an anonymous function without a 
+name binding anywhere a function is expected. A function value can be defined by `(func [parameter names] <body>)`.
+
 To call a function use the `call` operator supplying the variable to which the function is bound as well as an argument
-for each function parameter.
+for each function parameter, e.g. `(let [f (func [x] (* x x))] (call f [5]))` evaluates to `25 : Num`.
+
+#### Classes & Objects
+Like functions, classes only exist as values. Therefore, a named class can be defined by assigning a `class` expression to an
+identifier using `global` or `let`. As with functions a class can also be defined as an anonymous class without a name binding. 
+A class consists of fields and methods, which must be specified in the class definition. 
+A field is declared as `(field <name>)`, a method as `(method <name> <func-expression>)`.
+
+An object of a class can be instantiated with `(create <class> [field values])`, where `<class>` evaluates to a class value and 
+`field values` contains one expression for every defined field in the class. The values are mapped to the fields based
+on the field definition order. YAPL provides operators for reading and writing the fields of the resulting object and
+for calling methods on the object. `(field-get <object> <field-id>)` reads a field, `(field-set <object> <field-id> <value>)`
+writes a field and `(method-call <object> <method-id> [arguments])` calls a method on an object.
+
+Lastly, inside a method body the `this` identifier can be used to refer to a class instance.
+
+A full class definition may for example look as follows:
+```
+(global Example
+    (class
+        (field a)
+        (field b)
+        (method f [x] (+ x (field-get this a)))
+    )
+)
+```
 
 ### Examples
 - Calculates the factorial of 5:
@@ -42,8 +98,26 @@ for each function parameter.
     )
 )
 
-(call factorial 5)
+(call factorial [5])
 ```
 
-### Grammar
-See [grammar.md](grammar.md)
+- Creates an object of a class and operates on it (evaluates to `8 : Num`):
+```
+(global Example
+    (class
+        (field a)
+        (method add
+            (func [x]
+                  (field-set this a (+ (field-get this a) x))
+            )
+        )
+    )
+)
+
+(let [obj (create Example 5)]
+    (seq
+        (method-call obj add [3])
+        (field-get obj a)
+    )
+)
+```

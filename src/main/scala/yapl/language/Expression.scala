@@ -1,33 +1,45 @@
 package yapl.language
 
 sealed class Global(val id: Id, val value: Expression)
-sealed abstract class Expression
+sealed abstract class Expression(val meta: MetaInfo)
 
-case class Void() extends Expression
+case class Void(metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Num(n: Double) extends Expression
-case class Bool(b: Boolean) extends Expression
-case class Id(name: Symbol) extends Expression
+case class Num(n: Double, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Bool(b: Boolean, metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Add(operands: List[Expression]) extends Expression
-case class Sub(operands: List[Expression]) extends Expression
-case class Mul(operands: List[Expression]) extends Expression
-case class Div(operands: List[Expression]) extends Expression
+case class Id(name: Symbol, metaInfo: MetaInfo) extends Expression(metaInfo) {
+    override def equals(obj: Any): Boolean = obj match {
+        case Id(otherName, _) => otherName.equals(name)
+        case _ => false
+    }
+}
 
-case class Not(operands: List[Expression]) extends Expression
-case class And(operands: List[Expression]) extends Expression
-case class Or(operands: List[Expression]) extends Expression
+case class Add(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Sub(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Mul(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Div(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Equal(operands: List[Expression]) extends Expression
-case class Greater(operands: List[Expression]) extends Expression
-case class Less(operands: List[Expression]) extends Expression
+case class Not(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class And(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Or(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Let(declarations: List[(Id, Expression)], body: Expression) extends Expression
+case class Equal(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Greater(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Less(operands: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Set(name: Id, value: Expression) extends Expression
+case class Let(declarations: List[(Id, Expression)], body: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Fun(params: List[Id], body: Expression) extends Expression
-case class App(fun: Expression, args: List[Expression]) extends Expression
+case class Set(name: Id, value: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class If(test: Expression, ifCase: Expression, elseCase: Expression) extends Expression
-case class Seq(statements: List[Expression]) extends Expression
+case class Fun(params: List[Id], body: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class App(fun: Expression, args: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+
+case class If(test: Expression, ifCase: Expression, elseCase: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Seq(statements: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+
+case class Class(fields: List[Id], methods: List[(Id, Expression)], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Create(className: Id, fieldValues: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class FieldGet(obj: Expression, field: Id, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class FieldSet(obj: Expression, field: Id, value: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class MethodCall(obj: Expression, method: Id, args: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)

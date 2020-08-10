@@ -1,0 +1,15 @@
+(global C
+    (class
+        (field a)
+        (method f [x]
+            (field-set this a (+ (field-get this a) x))
+        )
+    )
+)
+
+(let [o (create C 5)]
+    (seq
+        (method-call o f [3])
+        (field-get o a)
+    )
+)

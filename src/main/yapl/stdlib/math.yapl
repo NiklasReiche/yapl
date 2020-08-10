@@ -1,3 +1,5 @@
+(global pi 3.41)
+
 (global fact
     (func [n]
         (if (= n 1)
@@ -7,6 +9,3 @@
     )
 )
 
-(let [x 5]
-    (call fact [x])
-)

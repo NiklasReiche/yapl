@@ -7,13 +7,17 @@
 
 <global> ::= '(' 'global' <id> <expression> ')'
 
-<expression> ::=
-    <operation>
-    <id>
-    <number>
-    <boolean>
+<expression> ::= <operation> | <value>
+
+<value> ::= <id> | <number> | <boolean> | <function_def> | <class_def>
 
 <boolean> ::= 'true' | 'false'
+
+<function_def> ::= '(' 'func' '[' <id>* ']' <expression> ')'
+
+<class_def> ::= '(' 'class' (<field_def>|<method_def>)* ')'
+<field_def> ::= '(' 'field' <id> ')'
+<method_def> ::= '(' 'method' <id> '[' <id>* ']' <expression> ')'
 
 <operation> ::=
     <arithmetic_operator>
@@ -21,9 +25,11 @@
     <comparison_operator>
     <control_structure>
     '(' 'let' ('[' <id> <expression> ']')+ <expression> ')'
-    '(' 'func' '[' <id>* ']' <expression> ')'
-    '(' 'call' <id> <expression>* ')'
+    '(' 'call' <id> '[' <expression>* ']' ')'
     '(' 'set' <id> <expression> ')'
+    '(' 'field-get' <expression> <id> ')'
+    '(' 'field-set' <expression> <id> <expression> ')'
+    '(' 'method-call' <expression> <id> '[' <expression>* ']' ')'
 
 <arithmetic_operator> ::=
     '(' '+' <expression>+ ')'

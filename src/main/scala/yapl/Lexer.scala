@@ -1,13 +1,13 @@
 package yapl
 
-import yapl.language.{TNumber, TOperator, TPunctuation, TSymbol, Token, TokenMeta}
+import yapl.language.{TNumber, TOperator, TPunctuation, TSymbol, Token, MetaInfo}
 
 class LexerException(val file: String, val line: Integer, val msg: String) extends Exception
 
 object Lexer {
     def lex(text: String, file: String): List[Token] = {
         this.file = file
-        val result = lexInner(text.toList, 0)
+        val result = lexInner(text.toList, 1)
         this.file = ""
         result
     }
@@ -26,10 +26,10 @@ object Lexer {
                 lexInner(tail, line + 1)
 
             case '+' | '-' | '*' | '/' | '&' | '|' | '!' | '=' | '<' | '>' =>
-                TOperator(head.toString, TokenMeta(file, line)) :: lexInner(tail, line)
+                TOperator(head.toString, MetaInfo(file, line)) :: lexInner(tail, line)
 
             case '(' | ')' | '[' | ']' =>
-                TPunctuation(head.toString, TokenMeta(file, line)) :: lexInner(tail, line)
+                TPunctuation(head.toString, MetaInfo(file, line)) :: lexInner(tail, line)
 
             case alpha() =>
                 scanSymbol(tail, head.toString, line)
@@ -43,22 +43,22 @@ object Lexer {
     }
 
     private def scanNumber(stream: List[Char], acc: String, line: Integer): List[Token] = stream match {
-        case Nil => TNumber(acc, TokenMeta(file, line)) :: Nil
+        case Nil => TNumber(acc, MetaInfo(file, line)) :: Nil
         case head :: tail => head match {
             case numeric() | '.' =>
                 scanNumber(tail, acc + head, line)
             case _ =>
-                TNumber(acc, TokenMeta(file, line)) :: lexInner(stream, line)
+                TNumber(acc, MetaInfo(file, line)) :: lexInner(stream, line)
         }
     }
 
     private def scanSymbol(stream: List[Char], acc: String, line: Integer): List[Token] = stream match {
-        case Nil => TSymbol(acc, TokenMeta(file, line)) :: Nil
+        case Nil => TSymbol(acc, MetaInfo(file, line)) :: Nil
         case head :: tail => head match {
-            case alpha() =>
+            case alpha() | '_' | '-' =>
                 scanSymbol(tail, acc + head, line)
             case _ =>
-                TSymbol(acc, TokenMeta(file, line)) :: lexInner(stream, line)
+                TSymbol(acc, MetaInfo(file, line)) :: lexInner(stream, line)
         }
     }
 

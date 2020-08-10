@@ -28,7 +28,7 @@ object Parser {
         case token :: _ =>
             throw new ParserException(token.meta.file, token.meta.line, s"Expected 'global' or expression, but got $token")
 
-        case Nil => (Void(), Nil)
+        case Nil => (Void(MetaInfo("", -1)), Nil)
     }
 
     private def parseGlobal(tokens: List[Token]): (Global, List[Token]) = tokens match {
@@ -49,12 +49,12 @@ object Parser {
                 case _ => handleError("')'", r1)
             }
 
-        case TNumber(n, _) :: tail => (Num(n.toDouble), tail)
+        case TNumber(n, metaInfo) :: tail => (Num(n.toDouble, metaInfo), tail)
 
-        case TSymbol(s, _) :: tail => s match {
-            case "true" => (Bool(true), tail)
-            case "false" => (Bool(false), tail)
-            case _ => (Id(Symbol(s)), tail)
+        case TSymbol(s, metaInfo) :: tail => s match {
+            case "true" => (Bool(b = true, metaInfo), tail)
+            case "false" => (Bool(b = false, metaInfo), tail)
+            case _ => (Id(Symbol(s), metaInfo), tail)
         }
 
         case _ => handleError("expression", tokens)
@@ -67,51 +67,93 @@ object Parser {
     }
 
     private def parseIdentifier(tokens: List[Token]): (Id, List[Token]) = tokens match {
-        case TSymbol(name, _) :: tail => (Id(Symbol(name)), tail)
+        case TSymbol(name, metaInfo) :: tail => (Id(Symbol(name), metaInfo), tail)
         case _ => handleError("identifier", tokens)
     }
 
     private def parseKeyword(tokens: List[Token]): (Expression, List[Token]) = tokens match {
-        case TSymbol("let", _) :: tail => tail match {
+        case TSymbol("let", metaInfo) :: tail => tail match {
             case TPunctuation("[", _) :: _ =>
                 val (declarations, r1) = parseLetPairs(tail)
                 val (body, r2) = parseExpression(r1)
-                (Let(declarations, body), r2)
+                (Let(declarations, body, metaInfo), r2)
             case _ => handleError("'['", tail)
         }
 
-        case TSymbol("func", _) :: tail => tail match {
+        case TSymbol("func", metaInfo) :: tail => tail match {
             case TPunctuation("[", _) :: tail =>
                 val (params, r1) = parseNIdentifiers(tail)
                 r1 match {
                     case TPunctuation("]", _) :: tail =>
                         val (body, r2) = parseExpression(tail)
-                        (Fun(params, body), r2)
+                        (Fun(params, body, metaInfo), r2)
 
                     case _ => handleError("']'", r1)
                 }
             case _ => handleError("'['", tail)
         }
 
-        case TSymbol("call", _) :: tail =>
+        case TSymbol("call", metaInfo) :: tail =>
             val (id, r1) = parseIdentifier(tail)
-            val (args, r2) = parseNExpressions(r1)
-            (App(id, args), r2)
+            r1 match {
+                case TPunctuation("[", _) :: tail =>
+                    val (args, r2) = parseNExpressions(tail)
+                    r2 match {
+                        case TPunctuation("]", _) :: tail =>
+                            (App(id, args, metaInfo), tail)
+                        case _ => handleError("']'", r1)
+                    }
+                case _ => handleError("'['", tail)
+            }
 
-        case TSymbol("if", _) :: tail =>
+        case TSymbol("if", metaInfo) :: tail =>
             val (test, r1) = parseExpression(tail)
             val (ifCase, r2) = parseExpression(r1)
             val (elseCase, r3) = parseExpression(r2)
-            (If(test, ifCase, elseCase), r3)
+            (If(test, ifCase, elseCase, metaInfo), r3)
 
-        case TSymbol("seq", _) :: tail =>
+        case TSymbol("seq", metaInfo) :: tail =>
             val (statements, r1) = parseNExpressions(tail)
-            (Seq(statements), r1)
+            (Seq(statements, metaInfo), r1)
 
-        case TSymbol("set", _) :: tail =>
+        case TSymbol("set", metaInfo) :: tail =>
             val (id, r1) = parseIdentifier(tail)
             val (value, r2) = parseExpression(r1)
-            (Set(id, value), r2)
+            (Set(id, value, metaInfo), r2)
+
+        case TSymbol("class", metaInfo) :: tail =>
+            val (fields, methods, r1) = parseClassBody(tail)
+            (Class(fields, methods, metaInfo), r1)
+
+        case TSymbol("create", metaInfo) :: tail =>
+            val (id, r1) = parseIdentifier(tail)
+            val (fieldValues, r2) = parseNExpressions(r1)
+            (Create(id, fieldValues, metaInfo), r2)
+
+        case TSymbol("field-get", metaInfo) :: tail =>
+            val (obj, r1) = parseExpression(tail)
+            val (id, r2) = parseIdentifier(r1)
+            (FieldGet(obj, id, metaInfo), r2)
+
+        case TSymbol("field-set", metaInfo) :: tail =>
+            val (obj, r1) = parseExpression(tail)
+            val (id, r2) = parseIdentifier(r1)
+            val (value, r3) = parseExpression(r2)
+            (FieldSet(obj, id, value, metaInfo), r3)
+
+        case TSymbol("method-call", metaInfo) :: tail =>
+            val (obj, r1) = parseExpression(tail)
+            val (id, r2) = parseIdentifier(r1)
+            r2 match {
+                case TPunctuation("[", _) :: tail =>
+                    val (args, r3) = parseNExpressions(tail)
+                    r3 match {
+                        case TPunctuation("]", _) :: tail =>
+                            (MethodCall(obj, id, args, metaInfo), tail)
+                        case _ => handleError("']'", r1)
+                    }
+                case _ => handleError("'['", tail)
+            }
 
         case _ => handleError("keyword", tokens)
     }
@@ -120,18 +162,55 @@ object Parser {
         case head :: tail =>
             val (operands, rest) = parseNExpressions(tail)
             head match {
-                case TOperator("+", _) => (Add(operands), rest)
-                case TOperator("-", _) => (Sub(operands), rest)
-                case TOperator("*", _) => (Mul(operands), rest)
-                case TOperator("/", _) => (Div(operands), rest)
+                case TOperator("+", meta@MetaInfo(file, line)) =>
+                    if (operands.length < 1)
+                        throw new ParserException(file, line, s"Expected 1 or more arguments for operator '+' but got ${operands.length}")
+                    (Add(operands, meta), rest)
 
-                case TOperator("&", _) => (And(operands), rest)
-                case TOperator("|", _) => (Or(operands), rest)
-                case TOperator("!", _) => (Not(operands), rest)
+                case TOperator("-", meta@MetaInfo(file, line)) =>
+                    if (operands.length < 1)
+                        throw new ParserException(file, line, s"Expected 1 or more arguments for operator '-' but got ${operands.length}")
+                    (Sub(operands, meta), rest)
 
-                case TOperator("=", _) => (Equal(operands), rest)
-                case TOperator("<", _) => (Less(operands), rest)
-                case TOperator(">", _) => (Greater(operands), rest)
+                case TOperator("*", meta@MetaInfo(file, line)) =>
+                    if (operands.length < 2)
+                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '*' but got ${operands.length}")
+                    (Mul(operands, meta), rest)
+
+                case TOperator("/", meta@MetaInfo(file, line)) =>
+                    if (operands.length < 2)
+                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '/' but got ${operands.length}")
+                    (Div(operands, meta), rest)
+
+                case TOperator("&", meta@MetaInfo(file, line)) =>
+                    if (operands.length < 2)
+                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '&' but got ${operands.length}")
+                    (And(operands, meta), rest)
+
+                case TOperator("|", meta@MetaInfo(file, line)) =>
+                    if (operands.length < 2)
+                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '|' but got ${operands.length}")
+                    (Or(operands, meta), rest)
+
+                case TOperator("!", meta@MetaInfo(file, line)) =>
+                    if (operands.length != 1)
+                        throw new ParserException(file, line, s"Expected 1 argument for operator '!' but got ${operands.length}")
+                    (Not(operands, meta), rest)
+
+                case TOperator("=", meta@MetaInfo(file, line)) =>
+                    if (operands.length != 2)
+                        throw new ParserException(file, line, s"Expected 2 arguments for operator '=' but got ${operands.length}")
+                    (Equal(operands, meta), rest)
+
+                case TOperator("<", meta@MetaInfo(file, line)) =>
+                    if (operands.length != 2)
+                        throw new ParserException(file, line, s"Expected 2 arguments for operator '<' but got ${operands.length}")
+                    (Less(operands, meta), rest)
+
+                case TOperator(">", meta@MetaInfo(file, line)) =>
+                    if (operands.length != 2)
+                        throw new ParserException(file, line, s"Expected 2 arguments for operator '>' but got ${operands.length}")
+                    (Greater(operands, meta), rest)
 
                 case TOperator(symbol, meta) => throw new ParserException(meta.file, meta.line, s"Unknown operator $symbol")
             }
@@ -174,5 +253,36 @@ object Parser {
             case _ => (Nil, tokens)
         }
         case Nil => throw new ParserException("", -1, s"Expected '[' but gor EOF")
+    }
+
+    private def parseClassBody(tokens: List[Token]): (List[Id], List[(Id, Expression)], List[Token]) = tokens match {
+        case TPunctuation("(", _) :: TSymbol("field", _) :: tail =>
+            val (id, r1) = parseIdentifier(tail)
+            r1 match {
+                case TPunctuation(")", _) :: tail =>
+                    val (fields, methods, r2) = parseClassBody(tail)
+                    (id :: fields, methods, r2)
+                case _ => handleError("')'", r1)
+            }
+
+        case TPunctuation("(", _) :: TSymbol("method", m) :: tail =>
+            val (id, r1) = parseIdentifier(tail)
+            r1 match {
+                case TPunctuation("[", _) :: tail =>
+                    val (params, r2) = parseNIdentifiers(tail)
+                    r2 match {
+                        case TPunctuation("]", _) :: tail =>
+                            val (body, r3) = parseExpression(tail)
+                            r3 match {
+                                case TPunctuation(")", _) :: tail =>
+                                    val (fields, methods, r3) = parseClassBody(tail)
+                                    (fields, (id, Fun(params, body, m)) :: methods, r3)
+                            }
+                        case _ => handleError("']'", r2)
+                    }
+                case _ => handleError("'['", r1)
+            }
+
+        case TPunctuation(")", _) :: _ => (Nil, Nil, tokens)
     }
 }

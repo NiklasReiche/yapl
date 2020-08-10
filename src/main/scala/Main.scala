@@ -1,5 +1,5 @@
 import yapl._
-import yapl.language.{BoolV, ErrorV, NumV, Value, VoidV}
+import yapl.language.{BoolV, ClassV, Closure, ErrorV, NumV, Object, Value, VoidV}
 
 import scala.io.Source
 import scala.util.Using
@@ -18,6 +18,9 @@ object Main {
         run(program.get, args.head) match {
             case NumV(n) => println(s">> $n : Num")
             case BoolV(b) => println(s">> $b : Bool")
+            case Closure(params, _, _) => println(s">> [$params] : Closure")
+            case ClassV(fields, methods) => println(s">> [$fields]: Class")
+            case Object(c, fieldValues) => println(s">> [${c.fields}]: Object")
             case VoidV() => println(s">> Void")
             case ErrorV() =>
         }
@@ -47,11 +50,11 @@ object Main {
         } catch {
             case e: TypeError =>
                 if (debug) throw e
-                println(s"Type error in file '$file' at line : ${e.msg}")
+                println(s"Type error in file '${e.file}' at line ${e.line}: ${e.msg}")
                 ErrorV()
             case e: SemanticError =>
                 if (debug) throw e
-                println(s"Semantic error in file '$file' at line : ${e.msg}")
+                println(s"Semantic error in file '${e.file}' at line ${e.line}: ${e.msg}")
                 ErrorV()
         }
     }
