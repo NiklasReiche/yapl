@@ -7,7 +7,7 @@
     )
 )
 
-(let [o (create C 5)]
+(let [o (create C [5])]
     (seq
         (method-call o f [3])
         (field-get o a)

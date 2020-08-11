@@ -106,15 +106,13 @@ A full class definition may for example look as follows:
 (global Example
     (class
         (field a)
-        (method add
-            (func [x]
-                  (field-set this a (+ (field-get this a) x))
-            )
+        (method add [x]
+            (field-set this a (+ (field-get this a) x))
         )
     )
 )
 
-(let [obj (create Example 5)]
+(let [obj (create Example [5])]
     (seq
         (method-call obj add [3])
         (field-get obj a)

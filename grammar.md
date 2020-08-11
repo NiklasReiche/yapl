@@ -27,6 +27,7 @@
     '(' 'let' ('[' <id> <expression> ']')+ <expression> ')'
     '(' 'call' <id> '[' <expression>* ']' ')'
     '(' 'set' <id> <expression> ')'
+    '(' 'create' <expression> '[' <expression>* ']' ')' 
     '(' 'field-get' <expression> <id> ')'
     '(' 'field-set' <expression> <id> <expression> ')'
     '(' 'method-call' <expression> <id> '[' <expression>* ']' ')'
