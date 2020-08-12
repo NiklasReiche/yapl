@@ -1,9 +1,11 @@
 ```
-<program> ::=
-    <global> |
-    <expression> |
+<program> ::= 
+    <import> <program> | 
     <global> <program> |
-    <expression> <program>
+    <expression> <program> |
+    epsilon
+
+<import> ::= '(' 'import' <id> ')'
 
 <global> ::= '(' 'global' <id> <expression> ')'
 

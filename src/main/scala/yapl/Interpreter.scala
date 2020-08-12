@@ -3,7 +3,6 @@ package yapl
 import yapl.language._
 
 class TypeError(val file: String, val line: Int, val msg: String) extends Exception
-
 class SemanticError(val file: String, val line: Int, val msg: String) extends Exception
 
 object Interpreter {
@@ -37,7 +36,7 @@ object Interpreter {
             // Terminal expressions ------------------------------------------------------------------------------------
             case Num(n, _) => store.malloc(NumV(n))
             case Bool(b, _) => store.malloc(BoolV(b))
-            case Fun(params, body, _) => store.malloc(Closure(params, body, env))
+            case Func(params, body, _) => store.malloc(Closure(params, body, env))
             case Id(name, _) => (env(name), store)
 
             // Numeric operators ---------------------------------------------------------------------------------------
@@ -111,7 +110,7 @@ object Interpreter {
                 val (letEnv, letStore) = interpIdValuePairsRec(declarations, env, env, store)
                 interp(body, letEnv, letStore)
 
-            case App(funExpr, args, meta) =>
+            case FunctionCall(funExpr, args, meta) =>
                 val (closureLoc, s1) = interp(funExpr, env, store)
                 s1.lookup(closureLoc) match {
                     case c@Closure(_, body, _) =>

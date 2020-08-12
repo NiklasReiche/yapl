@@ -27,26 +27,39 @@ object Main {
     }
 
     def run(program: String, file: String = "", debug: Boolean = false): Value = {
+        def handleLexerException(e: LexerException): Unit = {
+            if (debug) throw e
+            println(s"Lexer error in file '${e.file}' at line ${e.line}: ${e.msg}")
+        }
+        def handleParserException(e: ParserException): Unit = {
+            if (debug) throw e
+            println(s"Parser error in file '${e.file}' at line ${e.line}: ${e.msg}")
+        }
+
         val tokens = try {
             Lexer.lex(program, file)
         } catch {
-            case e: LexerException =>
-                if (debug) throw e
-                println(s"Lexer error in file '${e.file}' at line ${e.line}: ${e.msg}")
-                return ErrorV()
+            case e: LexerException => handleLexerException(e); return ErrorV()
         }
 
-        val (expr, globals) = try {
+        val (expr, globals, imports) = try {
             Parser.parse(tokens)
         } catch {
-            case e: ParserException =>
-                if (debug) throw e
-                println(s"Parser error in file '${e.file}' at line ${e.line}: ${e.msg}")
-                return ErrorV()
+            case e: ParserException => handleParserException(e); return ErrorV()
+        }
+
+        val importedGlobals = try {
+            if (!file.isEmpty)
+                Preprocessor.importModules(file.substring(0, file.lastIndexOf("/") + 1), imports)
+            else
+                Nil
+        } catch {
+            case e: LexerException => handleLexerException(e); return ErrorV()
+            case e: ParserException => handleParserException(e); return ErrorV()
         }
 
         try {
-            Interpreter.interpret(expr, globals)
+            Interpreter.interpret(expr, globals concat importedGlobals)
         } catch {
             case e: TypeError =>
                 if (debug) throw e

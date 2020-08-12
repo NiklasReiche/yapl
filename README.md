@@ -86,6 +86,13 @@ A full class definition may for example look as follows:
 )
 ```
 
+#### Modules
+Each file is implicitly a module, which can be imported into another file with the `(import <module-name>)` statement.
+The `<module-name>` is the name of the file without the file ending. Relative paths can be used for modules that are not
+in the same directory as the importing file.
+
+When a module is imported, all `(global ...)` name bindings of the module are made available to the importing file.
+
 ### Examples
 - Calculates the factorial of 5:
 ```
