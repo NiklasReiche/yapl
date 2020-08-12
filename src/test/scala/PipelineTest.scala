@@ -12,6 +12,9 @@ class PipelineTest extends org.scalatest.FunSpec {
             assertResult(NumV(-2)) {
                 Main.run("(- 2 3 1)")
             }
+            assertResult(NumV(-2)) {
+                Main.run("(- 2)")
+            }
         }
         it ("multiply") {
             assertResult(NumV(12)) {
@@ -26,12 +29,18 @@ class PipelineTest extends org.scalatest.FunSpec {
     }
 
     describe("boolean expressions") {
-        it("and") {
+        it("or") {
             assertResult(BoolV(true)) {
                 Main.run("(| true false true false)")
             }
+            assertResult(BoolV(false)) {
+                Main.run("(| false false false)")
+            }
         }
-        it("or") {
+        it("and") {
+            assertResult(BoolV(true)) {
+                Main.run("(& true true true)")
+            }
             assertResult(BoolV(false)) {
                 Main.run("(& true false true)")
             }
@@ -39,6 +48,9 @@ class PipelineTest extends org.scalatest.FunSpec {
         it ("not") {
             assertResult(BoolV(true)) {
                 Main.run("(! false)")
+            }
+            assertResult(BoolV(false)) {
+                Main.run("(! true)")
             }
         }
     }
@@ -57,20 +69,26 @@ class PipelineTest extends org.scalatest.FunSpec {
                 Main.run("(< 2 3)")
             }
             assertResult(BoolV(false)) {
+                Main.run("(< 3 2)")
+            }
+            assertResult(BoolV(false)) {
                 Main.run("(< 2 2)")
             }
         }
         it ("greater than") {
+            assertResult(BoolV(true)) {
+                Main.run("(> 3 2)")
+            }
             assertResult(BoolV(false)) {
                 Main.run("(> 2 3)")
             }
-            assertResult(BoolV(true)) {
-                Main.run("(> 3 2)")
+            assertResult(BoolV(false)) {
+                Main.run("(> 2 2)")
             }
         }
     }
 
-    describe("if") {
+    describe("if-else") {
         it ("") {
             assertResult(NumV(1)) {
                 Main.run("(if true 1 2)")
@@ -91,7 +109,7 @@ class PipelineTest extends org.scalatest.FunSpec {
     }
 
     describe("let") {
-        it("simple") {
+        it("single binding") {
             assertResult(NumV(6)) {
                 Main.run(
                     """
@@ -115,7 +133,7 @@ class PipelineTest extends org.scalatest.FunSpec {
             }
         }
 
-        it("function") {
+        it("function binding") {
             assertResult(NumV(44)) {
                 Main.run(
                     """
@@ -127,7 +145,7 @@ class PipelineTest extends org.scalatest.FunSpec {
             }
         }
 
-        it("recursion") {
+        it("recursive function binding") {
             assertResult(NumV(120)) {
                 Main.run(
                     """
@@ -168,13 +186,13 @@ class PipelineTest extends org.scalatest.FunSpec {
 
     describe("set") {
         it("") {
-            assertResult(NumV(42)) {
+            assertResult(NumV(40)) {
                 Main.run(
                     """
                       |(let [x 0]
                       |  (seq
                       |    (set x 40)
-                      |    (+ x 2)
+                      |    x
                       |  )
                       |)
                       |""".stripMargin, debug = true)

@@ -5,7 +5,7 @@ import yapl.language._
 class ParserException(val file: String, val line: Integer, val msg: String) extends Exception
 
 object Parser {
-    def parse(tokens: List[Token]): (Expression, List[Global]) = parseTopLevelExpressions(tokens)
+    def parse(tokens: List[Token]): (Expression, List[Global], List[Import]) = parseTopLevelExpressions(tokens)
 
     private def handleError(expected: String, tokens: List[Token]) = tokens match {
         case token :: _ =>
@@ -14,21 +14,31 @@ object Parser {
             throw new ParserException("", -1, s"Expected $expected but got EOF")
     }
 
-    private def parseTopLevelExpressions(tokens: List[Token]): (Expression, List[Global]) = tokens match {
+    private def parseTopLevelExpressions(tokens: List[Token]): (Expression, List[Global], List[Import]) = tokens match {
+        case TPunctuation("(", _) :: TSymbol("import", _) :: tail => tail match {
+            case TSymbol(module, _) :: tail => tail match {
+                case TPunctuation(")", _) :: tail =>
+                    val (expr, lst, lst2) = parseTopLevelExpressions(tail)
+                    (expr, lst, Import(module) :: lst2)
+                case _ => handleError("')'", tail)
+            }
+            case _ => handleError("module name", tail)
+        }
+
         case TPunctuation("(", _) :: TSymbol("global", _) :: _ =>
             val (global, r1) = parseGlobal(tokens)
-            val (expr, lst) = parseTopLevelExpressions(r1)
-            (expr, global :: lst)
+            val (expr, lst, lst2) = parseTopLevelExpressions(r1)
+            (expr, global :: lst, lst2)
 
         case TPunctuation("(", _) :: _ =>
             val (expr, r1) = parseExpression(tokens)
-            val (_, lst) = parseTopLevelExpressions(r1)
-            (expr, lst)
+            val (_, lst, lst2) = parseTopLevelExpressions(r1)
+            (expr, lst, lst2)
 
         case token :: _ =>
-            throw new ParserException(token.meta.file, token.meta.line, s"Expected 'global' or expression, but got $token")
+            throw new ParserException(token.meta.file, token.meta.line, s"Expected 'global' or expression or import, but got $token")
 
-        case Nil => (Void(MetaInfo("", -1)), Nil)
+        case Nil => (Void(MetaInfo("", -1)), Nil, Nil)
     }
 
     private def parseGlobal(tokens: List[Token]): (Global, List[Token]) = tokens match {
@@ -36,7 +46,7 @@ object Parser {
             val (id, r1) = parseIdentifier(tail)
             val (expr, r2) = parseExpression(r1)
             r2 match {
-                case TPunctuation(")", _) :: r3 => (new Global(id, expr), r3)
+                case TPunctuation(")", _) :: r3 => (Global(id, expr), r3)
                 case _ => handleError("')'", r2)
             }
     }
@@ -86,7 +96,7 @@ object Parser {
                 r1 match {
                     case TPunctuation("]", _) :: tail =>
                         val (body, r2) = parseExpression(tail)
-                        (Fun(params, body, metaInfo), r2)
+                        (Func(params, body, metaInfo), r2)
 
                     case _ => handleError("']'", r1)
                 }
@@ -100,7 +110,7 @@ object Parser {
                     val (args, r2) = parseNExpressions(tail)
                     r2 match {
                         case TPunctuation("]", _) :: tail =>
-                            (App(id, args, metaInfo), tail)
+                            (FunctionCall(id, args, metaInfo), tail)
                         case _ => handleError("']'", r1)
                     }
                 case _ => handleError("'['", tail)
@@ -166,63 +176,64 @@ object Parser {
         case _ => handleError("keyword", tokens)
     }
 
-    private def parseNAryOperator(tokens: List[Token]): (Expression, List[Token]) = tokens match {
-        case head :: tail =>
-            val (operands, rest) = parseNExpressions(tail)
-            head match {
-                case TOperator("+", meta@MetaInfo(file, line)) =>
-                    if (operands.length < 1)
-                        throw new ParserException(file, line, s"Expected 1 or more arguments for operator '+' but got ${operands.length}")
-                    (Add(operands, meta), rest)
+    private def parseNAryOperator(tokens: List[Token]): (Expression, List[Token]) = {
+        def checkOperands(operands: List[Expression], amount: Int, op: String, meta: MetaInfo): Unit = {
+            if (operands.length < amount)
+                throw new ParserException(meta.file, meta.line, s"Expected $amount or more arguments for operator '$op' but got ${operands.length}")
+        }
 
-                case TOperator("-", meta@MetaInfo(file, line)) =>
-                    if (operands.length < 1)
-                        throw new ParserException(file, line, s"Expected 1 or more arguments for operator '-' but got ${operands.length}")
-                    (Sub(operands, meta), rest)
+        tokens match {
+            case head :: tail =>
+                val (operands, rest) = parseNExpressions(tail)
+                head match {
+                    case TOperator("+", meta) =>
+                        checkOperands(operands, 1, "+", meta)
+                        (Add(operands, meta), rest)
 
-                case TOperator("*", meta@MetaInfo(file, line)) =>
-                    if (operands.length < 2)
-                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '*' but got ${operands.length}")
-                    (Mul(operands, meta), rest)
+                    case TOperator("-", meta) =>
+                        checkOperands(operands, 1, "-", meta)
+                        (Sub(operands, meta), rest)
 
-                case TOperator("/", meta@MetaInfo(file, line)) =>
-                    if (operands.length < 2)
-                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '/' but got ${operands.length}")
-                    (Div(operands, meta), rest)
+                    case TOperator("*", meta) =>
+                        checkOperands(operands, 2, "+", meta)
+                        (Mul(operands, meta), rest)
 
-                case TOperator("&", meta@MetaInfo(file, line)) =>
-                    if (operands.length < 2)
-                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '&' but got ${operands.length}")
-                    (And(operands, meta), rest)
+                    case TOperator("/", meta) =>
+                        checkOperands(operands, 2, "/", meta)
+                        (Div(operands, meta), rest)
 
-                case TOperator("|", meta@MetaInfo(file, line)) =>
-                    if (operands.length < 2)
-                        throw new ParserException(file, line, s"Expected 2 or more arguments for operator '|' but got ${operands.length}")
-                    (Or(operands, meta), rest)
+                    case TOperator("&", meta) =>
+                        checkOperands(operands, 2, "&", meta)
+                        (And(operands, meta), rest)
 
-                case TOperator("!", meta@MetaInfo(file, line)) =>
-                    if (operands.length != 1)
-                        throw new ParserException(file, line, s"Expected 1 argument for operator '!' but got ${operands.length}")
-                    (Not(operands, meta), rest)
+                    case TOperator("|", meta) =>
+                        checkOperands(operands, 2, "|", meta)
+                        (Or(operands, meta), rest)
 
-                case TOperator("=", meta@MetaInfo(file, line)) =>
-                    if (operands.length != 2)
-                        throw new ParserException(file, line, s"Expected 2 arguments for operator '=' but got ${operands.length}")
-                    (Equal(operands, meta), rest)
+                    case TOperator("!", meta@MetaInfo(file, line)) =>
+                        if (operands.length != 1)
+                            throw new ParserException(file, line, s"Expected 1 argument for operator '!' but got ${operands.length}")
+                        (Not(operands, meta), rest)
 
-                case TOperator("<", meta@MetaInfo(file, line)) =>
-                    if (operands.length != 2)
-                        throw new ParserException(file, line, s"Expected 2 arguments for operator '<' but got ${operands.length}")
-                    (Less(operands, meta), rest)
+                    case TOperator("=", meta@MetaInfo(file, line)) =>
+                        if (operands.length != 2)
+                            throw new ParserException(file, line, s"Expected 2 arguments for operator '=' but got ${operands.length}")
+                        (Equal(operands, meta), rest)
 
-                case TOperator(">", meta@MetaInfo(file, line)) =>
-                    if (operands.length != 2)
-                        throw new ParserException(file, line, s"Expected 2 arguments for operator '>' but got ${operands.length}")
-                    (Greater(operands, meta), rest)
+                    case TOperator("<", meta@MetaInfo(file, line)) =>
+                        if (operands.length != 2)
+                            throw new ParserException(file, line, s"Expected 2 arguments for operator '<' but got ${operands.length}")
+                        (Less(operands, meta), rest)
 
-                case TOperator(symbol, meta) => throw new ParserException(meta.file, meta.line, s"Unknown operator $symbol")
-            }
-        case Nil => throw new ParserException("", -1, s"Expected operator but got EOF")
+                    case TOperator(">", meta@MetaInfo(file, line)) =>
+                        if (operands.length != 2)
+                            throw new ParserException(file, line, s"Expected 2 arguments for operator '>' but got ${operands.length}")
+                        (Greater(operands, meta), rest)
+
+                    case TOperator(symbol, meta) => throw new ParserException(meta.file, meta.line, s"Unknown operator $symbol")
+                }
+            case Nil => throw new ParserException("", -1, s"Expected operator but got EOF")
+        }
     }
 
     private def parseNIdentifiers(tokens: List[Token]): (List[Id], List[Token]) = tokens match {
@@ -284,7 +295,7 @@ object Parser {
                             r3 match {
                                 case TPunctuation(")", _) :: tail =>
                                     val (fields, methods, r3) = parseClassBody(tail)
-                                    (fields, (id, Fun(params, body, m)) :: methods, r3)
+                                    (fields, (id, Func(params, body, m)) :: methods, r3)
                             }
                         case _ => handleError("']'", r2)
                     }

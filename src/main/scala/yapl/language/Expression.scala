@@ -1,6 +1,8 @@
 package yapl.language
 
-sealed class Global(val id: Id, val value: Expression)
+case class Import(file: String)
+case class Global(id: Id, value: Expression)
+
 sealed abstract class Expression(val meta: MetaInfo)
 
 case class Void(metaInfo: MetaInfo) extends Expression(metaInfo)
@@ -32,8 +34,8 @@ case class Let(declarations: List[(Id, Expression)], body: Expression, metaInfo:
 
 case class Set(name: Id, value: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
 
-case class Fun(params: List[Id], body: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
-case class App(fun: Expression, args: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Func(params: List[Id], body: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class FunctionCall(fun: Expression, args: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
 case class If(test: Expression, ifCase: Expression, elseCase: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
 case class Seq(statements: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
