@@ -1,5 +1,7 @@
-# yapl - Yet Another Programming Language
+# yapl - Yet Another Programming Language 
 Just a small personal project for learning purposes.
+
+![Scala CI](https://github.com/NiklasReiche/yapl/workflows/Scala%20CI/badge.svg?branch=master)
 
 #### Project components
 The project consists of a lexer, a parser, and an interpreter for a simple programming language.
