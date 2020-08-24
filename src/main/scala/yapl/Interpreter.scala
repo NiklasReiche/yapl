@@ -3,6 +3,7 @@ package yapl
 import yapl.language._
 
 class TypeError(val file: String, val line: Int, val msg: String) extends Exception
+
 class SemanticError(val file: String, val line: Int, val msg: String) extends Exception
 
 object Interpreter {
@@ -84,6 +85,9 @@ object Interpreter {
                 (op1, op2) match {
                     case (NumV(a), NumV(b)) => s2.malloc(BoolV(a == b))
                     case (BoolV(a), BoolV(b)) => s2.malloc(BoolV(a == b))
+                    case (c1@Closure(_, _, _), c2@Closure(_, _, _)) => s2.malloc(BoolV(c1 equals c2))
+                    case (c1@ClassV(_, _), c2@ClassV(_, _)) => s2.malloc(BoolV(c1 equals c2))
+                    case (o1@Object(_, _), o2@Object(_, _)) => s2.malloc(BoolV(o1 equals o2))
                     case (v1, v2) => throw new TypeError(meta.file, meta.line, s"Type mismatch for operator '=', $v1 and $v2")
                 }
 
@@ -163,21 +167,23 @@ object Interpreter {
                 })
                 classStore.malloc(ClassV(fields, methodIdPairs))
 
-            case Create(Id(className, meta), fieldValuesExpr, createMeta) => store.lookup(env(className)) match {
-                case c@ClassV(fields, _) =>
-                    if (fields.length != fieldValuesExpr.length)
-                        throw new SemanticError(createMeta.file, createMeta.line, s"Expected ${fields.length} arguments, but got ${fieldValuesExpr.length}")
+            case Create(classExpr, fieldValuesExpr, createMeta) =>
+                val (classValLoc, s0) = interp(classExpr, env, store)
+                s0.lookup(classValLoc) match {
+                    case c@ClassV(fields, _) =>
+                        if (fields.length != fieldValuesExpr.length)
+                            throw new SemanticError(createMeta.file, createMeta.line, s"Expected ${fields.length} arguments, but got ${fieldValuesExpr.length}")
 
-                    val (fieldValues, s1) = fieldValuesExpr.foldRight(Nil: List[Location], store)((expr, acc) => {
-                        val (lst, s) = acc
-                        val (loc, s1) = interp(expr, env, s)
-                        // call-by-value
-                        val (newLoc, s2) = s1.malloc(s1.lookup(loc))
-                        (newLoc :: lst, s2)
-                    })
-                    s1.malloc(Object(c, fieldValues))
-                case _ => throw new TypeError(meta.file, meta.line, s"Can only create objects from classes")
-            }
+                        val (fieldValues, s1) = fieldValuesExpr.foldRight(Nil: List[Location], store)((expr, acc) => {
+                            val (lst, s) = acc
+                            val (loc, s1) = interp(expr, env, s)
+                            // call-by-value
+                            val (newLoc, s2) = s1.malloc(s1.lookup(loc))
+                            (newLoc :: lst, s2)
+                        })
+                        s1.malloc(Object(c, fieldValues))
+                    case _ => throw new TypeError(createMeta.file, createMeta.line, s"Can only create objects from classes")
+                }
 
             case FieldGet(objExpr, field, meta) =>
                 val (objLoc, s1) = interp(objExpr, env, store)

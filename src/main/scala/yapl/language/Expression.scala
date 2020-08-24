@@ -41,7 +41,7 @@ case class If(test: Expression, ifCase: Expression, elseCase: Expression, metaIn
 case class Seq(statements: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
 case class Class(fields: List[Id], methods: List[(Id, Expression)], metaInfo: MetaInfo) extends Expression(metaInfo)
-case class Create(className: Id, fieldValues: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Create(classExpr: Expression, fieldValues: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 case class FieldGet(obj: Expression, field: Id, metaInfo: MetaInfo) extends Expression(metaInfo)
 case class FieldSet(obj: Expression, field: Id, value: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
 case class MethodCall(obj: Expression, method: Id, args: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)

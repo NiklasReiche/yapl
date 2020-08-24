@@ -136,13 +136,13 @@ object Parser {
             (Class(fields, methods, metaInfo), r1)
 
         case TSymbol("create", metaInfo) :: tail =>
-            val (id, r1) = parseIdentifier(tail)
+            val (classExpr, r1) = parseExpression(tail)
             r1 match {
                 case TPunctuation("[", _) :: tail =>
                     val (fieldValues, r2) = parseNExpressions(tail)
                     r2 match {
                         case TPunctuation("]", _) :: tail =>
-                            (Create(id, fieldValues, metaInfo), tail)
+                            (Create(classExpr, fieldValues, metaInfo), tail)
                         case _ => handleError("]", r2)
                     }
                 case _ => handleError("[", r1)

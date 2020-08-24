@@ -1,12 +1,3 @@
-(global fact
-    (func [n]
-        (if (= n 1)
-            1
-            (* n (call fact [(- n 1)]))
-        )
-    )
-)
-
-(let [x 5]
-    (call fact [x])
+(let [l (call cons [1 (call cons [2 (call cons [3 Nil])])])]
+    (call map [l (func [x] (* x x))])
 )
