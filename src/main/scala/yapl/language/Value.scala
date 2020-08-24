@@ -1,6 +1,5 @@
 package yapl.language
 
-import scala.collection.Map
 import yapl.Interpreter.Env
 import yapl.Interpreter.Location
 

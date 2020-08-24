@@ -6,6 +6,11 @@ import scala.util.Using
 
 object Main {
     def main(args: Array[String]): Unit = {
+        if (args.length != 2) {
+            println("No .yapl file specified!\nUsage: java -jar yapl.jar <file>")
+            return
+        }
+
         val program = Using(Source.fromFile(args.head)) {
             _.mkString
         }
@@ -18,9 +23,9 @@ object Main {
         run(program.get, args.head) match {
             case NumV(n) => println(s">> $n : Num")
             case BoolV(b) => println(s">> $b : Bool")
-            case Closure(params, _, _) => println(s">> [$params] : Closure")
-            case ClassV(fields, methods) => println(s">> [$fields]: Class")
-            case Object(c, fieldValues) => println(s">> [${c.fields}]: Object")
+            case Closure(params, _, _) => println(s">> [function] : Closure")
+            case ClassV(fields, methods) => println(s">> [class]: Class")
+            case Object(c, fieldValues) => println(s">> [object]: Object")
             case VoidV() => println(s">> Void")
             case ErrorV() =>
         }
@@ -48,6 +53,13 @@ object Main {
             case e: ParserException => handleParserException(e); return ErrorV()
         }
 
+        val stdlib = try {
+            Preprocessor.importStdlib()
+        } catch {
+            case e: LexerException => handleLexerException(e); return ErrorV()
+            case e: ParserException => handleParserException(e); return ErrorV()
+        }
+
         val importedGlobals = try {
             if (!file.isEmpty)
                 Preprocessor.importModules(file.substring(0, file.lastIndexOf("/") + 1), imports)
@@ -59,7 +71,7 @@ object Main {
         }
 
         try {
-            Interpreter.interpret(expr, globals concat importedGlobals)
+            Interpreter.interpret(expr, stdlib concat globals concat importedGlobals)
         } catch {
             case e: TypeError =>
                 if (debug) throw e
