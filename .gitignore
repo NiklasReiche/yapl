@@ -10,3 +10,4 @@ target
 # Binaries
 *.class
 out
+bin

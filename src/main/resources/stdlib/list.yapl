@@ -14,7 +14,7 @@
 )
 
 # Constructs a new list from a head element and a tail list
-# _, List -> List
+# [Any, List] -> List
 (global cons
     (func [head tail]
         (create List [head tail])
@@ -46,14 +46,28 @@
     )
 )
 
-#(global zip ...)
-
+# Creates a new list by applying a function to each element of a given list
+# [List, Any -> Any] -> List
 (global map
     (func [lst f]
         (if (call nil? [lst])
             Nil
             (create List [(call f [(field-get lst head)])
                           (call map [(field-get lst tail) f])]
+            )
+        )
+    )
+)
+
+# Creates a new list with all elements from a given list for which the given function returns true
+# [List, Any -> Bool] -> List
+(global filter
+    (func [lst f]
+        (if (call nil? [lst])
+            Nil
+            (if (call f [field-get lst head])
+                (create List [(field-get lst head) (call filter [(field-get lst tail) f])])
+                (call filter [(field-get lst tail) f])
             )
         )
     )
