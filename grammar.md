@@ -53,4 +53,8 @@
 <control_structure> ::=
     '(' 'if' <expression> <expression> <expression> ')'
     '(' 'seq' <expression>* ')'
+    '(' 'cond' <cond_case>* ')'
+
+<cond_case> ::=
+    '[' <expression> <expression> ']'
 ```

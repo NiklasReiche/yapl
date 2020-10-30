@@ -1,17 +1,24 @@
-(import factorial)
+(import higher_order)
 
 (global C
     (class
         (field a)
         (method f [x]
-            (field-set this a (+ (field-get this a) x))
+            (set a (+ a x))
         )
     )
 )
 
+(global sqr (func [x] (* x x)))
+
 (let [o (create C [5])]
     (seq
-        (method-call o f [(call fact [5])])
+        (method-call o f (fact 5))
         (field-get o a)
+        (cond
+            [(= 1 2) 1]
+            [(= 1 1) (fact 5)]
+            [else 3]
+        )
     )
 )

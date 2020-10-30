@@ -82,13 +82,10 @@ object Parser {
     }
 
     private def parseKeyword(tokens: List[Token]): (Expression, List[Token]) = tokens match {
-        case TSymbol("let", metaInfo) :: tail => tail match {
-            case TPunctuation("[", _) :: _ =>
-                val (declarations, r1) = parseLetPairs(tail)
-                val (body, r2) = parseExpression(r1)
-                (Let(declarations, body, metaInfo), r2)
-            case _ => handleError("'['", tail)
-        }
+        case TSymbol("let", metaInfo) :: r0 =>
+            val (declarations, r1) = parseLetPairs(r0)
+            val (body, r2) = parseExpression(r1)
+            (Let(declarations, body, metaInfo), r2)
 
         case TSymbol("func", metaInfo) :: tail => tail match {
             case TPunctuation("[", _) :: tail =>
@@ -103,24 +100,15 @@ object Parser {
             case _ => handleError("'['", tail)
         }
 
-        case TSymbol("call", metaInfo) :: tail =>
-            val (id, r1) = parseIdentifier(tail)
-            r1 match {
-                case TPunctuation("[", _) :: tail =>
-                    val (args, r2) = parseNExpressions(tail)
-                    r2 match {
-                        case TPunctuation("]", _) :: tail =>
-                            (FunctionCall(id, args, metaInfo), tail)
-                        case _ => handleError("']'", r1)
-                    }
-                case _ => handleError("'['", tail)
-            }
-
         case TSymbol("if", metaInfo) :: tail =>
             val (test, r1) = parseExpression(tail)
             val (ifCase, r2) = parseExpression(r1)
             val (elseCase, r3) = parseExpression(r2)
             (If(test, ifCase, elseCase, metaInfo), r3)
+
+        case TSymbol("cond", metaInfo) :: tail =>
+            val (branches, rest) = parseCondPairs(tail)
+            (Cond(branches, metaInfo), rest)
 
         case TSymbol("seq", metaInfo) :: tail =>
             val (statements, r1) = parseNExpressions(tail)
@@ -160,18 +148,13 @@ object Parser {
             (FieldSet(obj, id, value, metaInfo), r3)
 
         case TSymbol("method-call", metaInfo) :: tail =>
-            val (obj, r1) = parseExpression(tail)
-            val (id, r2) = parseIdentifier(r1)
-            r2 match {
-                case TPunctuation("[", _) :: tail =>
-                    val (args, r3) = parseNExpressions(tail)
-                    r3 match {
-                        case TPunctuation("]", _) :: tail =>
-                            (MethodCall(obj, id, args, metaInfo), tail)
-                        case _ => handleError("']'", r1)
-                    }
-                case _ => handleError("'['", tail)
-            }
+            parseMethodCall(tail, metaInfo)
+
+        case TSymbol("call", _) :: tail =>
+            parseFunctionCall(tail)
+
+        case TSymbol(_, _) :: _ =>
+            parseFunctionCall(tokens)
 
         case _ => handleError("keyword", tokens)
     }
@@ -259,19 +242,42 @@ object Parser {
     }
 
     private def parseLetPairs(tokens: List[Token]): (List[(Id, Expression)], List[Token]) = tokens match {
-        case head :: tail => head match {
-            case TPunctuation("[", _) =>
-                val (id, r1) = parseIdentifier(tail)
-                val (value, r2) = parseExpression(r1)
-                r2 match {
-                    case TPunctuation("]", _) :: tail =>
-                        val (lst, r3) = parseLetPairs(tail)
-                        ((id, value) :: lst, r3)
-                    case _ => handleError("']'", r2)
-                }
-            case _ => (Nil, tokens)
-        }
-        case Nil => throw new ParserException("", -1, s"Expected '[' but gor EOF")
+        case TPunctuation("[", _) :: r0 =>
+            val (id, r1) = parseIdentifier(r0)
+            val (value, r2) = parseExpression(r1)
+            r2 match {
+                case TPunctuation("]", _) :: tail =>
+                    val (lst, r3) = parseLetPairs(tail)
+                    ((id, value) :: lst, r3)
+                case _ => handleError("']'", r2)
+            }
+
+        case _ => (Nil, tokens)
+    }
+
+    private def parseCondPairs(tokens: List[Token]): (List[(Expression, Expression)], List[Token]) = tokens match {
+        case TPunctuation("[", _) :: TSymbol("else", meta) :: r0 =>
+            val (body, r1) = parseExpression(r0)
+            r1 match {
+                case TPunctuation("]", _) :: r2 =>
+                    val (_, r4) = parseCondPairs(r2)
+                    ((Bool(b = true, meta), body) :: Nil, r4)
+                case _ => handleError("']'", r1)
+            }
+
+        case TPunctuation("[", _) :: r0 =>
+            val (test, r1) = parseExpression(r0)
+            val (body, r2) = parseExpression(r1)
+            r2 match {
+                case TPunctuation("]", _) :: r3 =>
+                    val (lst, r4) = parseCondPairs(r3)
+                    ((test, body) :: lst, r4)
+                case _ => handleError("']'", r2)
+            }
+
+        case TPunctuation(")", _) :: _ => (Nil, tokens)
+
+        case _ => handleError("'[' or ')'", tokens)
     }
 
     private def parseClassBody(tokens: List[Token]): (List[Id], List[(Id, Expression)], List[Token]) = tokens match {
@@ -303,5 +309,47 @@ object Parser {
             }
 
         case TPunctuation(")", _) :: _ => (Nil, Nil, tokens)
+    }
+
+    private def parseFunctionCall(tokens: List[Token]): (Expression, List[Token]) = tokens match {
+        case TSymbol(_, metaInfo) :: tail =>
+            val (id, r1) = parseIdentifier(tokens)
+            r1 match {
+                case TPunctuation("[", _) :: tail =>
+                    val (args, r2) = parseNExpressions(tail)
+                    r2 match {
+                        case TPunctuation("]", _) :: tail =>
+                            (FunctionCall(id, args, metaInfo), tail)
+                        case _ => handleError("']'", r1)
+                    }
+
+                case _ :: tail =>
+                    val (args, rest) = parseNExpressions(r1)
+                    (FunctionCall(id, args, metaInfo), rest)
+
+                case _ => handleError("'[' or expression", tail)
+            }
+
+        case _ => handleError("identifier", tokens)
+    }
+
+    private def parseMethodCall(tokens: List[Token], metaInfo: MetaInfo): (Expression, List[Token]) = {
+        val (obj, r1) = parseExpression(tokens)
+        val (id, r2) = parseIdentifier(r1)
+        r2 match {
+            case TPunctuation("[", _) :: tail =>
+                val (args, r3) = parseNExpressions(tail)
+                r3 match {
+                    case TPunctuation("]", _) :: tail =>
+                        (MethodCall(obj, id, args, metaInfo), tail)
+                    case _ => handleError("']'", r1)
+                }
+
+            case _ :: tail =>
+                val (args, r3) = parseNExpressions(r2)
+                (MethodCall(obj, id, args, metaInfo), r3)
+
+            case _ => handleError("'['", r2)
+        }
     }
 }

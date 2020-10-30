@@ -6,8 +6,8 @@ import scala.util.Using
 
 object Main {
     def main(args: Array[String]): Unit = {
-        if (args.length != 2) {
-            println("No .yapl file specified!\nUsage: java -jar yapl.jar <file>")
+        if (args.isEmpty) {
+            println("Usage: java -jar yapl.jar <file>")
             return
         }
 
@@ -20,7 +20,7 @@ object Main {
             return
         }
 
-        run(program.get, args.head) match {
+        run(program.get, args.head, debug = args contains "-d") match {
             case NumV(n) => println(s">> $n : Num")
             case BoolV(b) => println(s">> $b : Bool")
             case Closure(params, _, _) => println(s">> [function] : Closure")

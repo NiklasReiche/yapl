@@ -7,68 +7,54 @@
 (global Nil (create (class) []))
 
 # Returns true if the given object is Nil
-(global nil?
-    (func [o]
-        (= o Nil)
-    )
-)
+(global nil? (func [o]
+    (= o Nil)
+))
 
 # Constructs a new list from a head element and a tail list
 # [Any, List] -> List
-(global cons
-    (func [head tail]
-        (create List [head tail])
-    )
-)
+(global cons (func [head tail]
+    (create List [head tail])
+))
 
 # Returns true if the given list contains the given element
 # List -> Bool
-(global contains?
-    (func [lst element]
-        (if (call nil? [lst])
-            false
-            (if (= element (field-get lst head))
-                true
-                (call contains? [(field-get lst tail) element])
-            )
-        )
+(global contains? (func [lst element]
+    (cond
+        [(nil? lst) false]
+        [(= element (field-get lst head)) true]
+        [else (contains? (field-get lst tail) element)]
     )
-)
+))
 
 # Returns the number of elements in a given list
 # List -> Num
-(global length
-    (func [lst]
-        (if (call nil? [lst])
-            0
-            (+ 1 (call length [(field-get lst tail)]))
-        )
+(global length (func [lst]
+    (if (nil? lst)
+        0
+        (+ 1 (length (field-get lst tail)))
     )
-)
+))
 
 # Creates a new list by applying a function to each element of a given list
 # [List, Any -> Any] -> List
-(global map
-    (func [lst f]
-        (if (call nil? [lst])
-            Nil
-            (create List [(call f [(field-get lst head)])
-                          (call map [(field-get lst tail) f])]
-            )
+(global map (func [lst f]
+    (if (nil? lst)
+        Nil
+        (create List [(call f (field-get lst head))
+                      (map (field-get lst tail) f)]
         )
     )
-)
+))
 
 # Creates a new list with all elements from a given list for which the given function returns true
 # [List, Any -> Bool] -> List
-(global filter
-    (func [lst f]
-        (if (call nil? [lst])
-            Nil
-            (if (call f [field-get lst head])
-                (create List [(field-get lst head) (call filter [(field-get lst tail) f])])
-                (call filter [(field-get lst tail) f])
-            )
+(global filter (func [lst f]
+    (if (nil? lst)
+        Nil
+        (if (call f (field-get lst head))
+            (create List [(field-get lst head) (filter (field-get lst tail) f)])
+            (filter (field-get lst tail) f)
         )
     )
-)
+))
