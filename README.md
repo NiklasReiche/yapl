@@ -52,6 +52,10 @@ The value of a variable can be changed by the `set` operator, e.g. `(set x 42)`
 #### Flow control structures
 - If-else: `(if <test> <true-clause> <false-clause>)` evaluates the `<true-clause>` if `<test>` evaluates to `true`, else
 `<false-clause>` is evaluated.
+- Cond: `(cond [<test-expression> <body-expression>] ... [else <body-expression])` evaluates the first `<body-expresison>`
+for which the corresponding `<test-expression>` evaluates to `true`. A `<testexpression` declared as `else` always 
+evaluates to `true`, which means that the `else` case will be evaluated if no previous cases are `true`. Furthermore, any
+cases declared after an `else` case will effectively be ignored.
 - Sequences: `(seq <expression> <expression> ...)` evaluates all given expressions. The result of the `seq` operator is
 the result of the last given expression.
 
@@ -61,7 +65,8 @@ identifier using `global` or `let`. Of course, a `func` expression may also be u
 name binding anywhere a function is expected. A function value can be defined by `(func [parameter names] <body>)`.
 
 To call a function use the `call` operator supplying the variable to which the function is bound as well as an argument
-for each function parameter, e.g. `(let [f (func [x] (* x x))] (call f [5]))` evaluates to `25 : Num`.
+for each function parameter, e.g. `(let [f (func [x] (* x x))] (call f [5]))` evaluates to `25 : Num`. 
+The `call` keyword, as well as the `[` `]` brackets can also be omitted, simplifying the function call to `(f 5)`.
 
 #### Classes & Objects
 Like functions, classes only exist as values. Therefore, a named class can be defined by assigning a `class` expression to an
@@ -95,12 +100,16 @@ in the same directory as the importing file.
 
 When a module is imported, all `(global ...)` name bindings of the module are made available to the importing file.
 
+### Standard Library
+The standard library is implicitly imported into every file. It includes a `List` class and standard higher order 
+functions like `filter` or `map`.
+
 ### Examples
 - Calculates the factorial of 5:
 ```
 (global factorial 
     (func [n]
-        (if (= n 1)
+        (if (| (= n 1) (= n 0))
             1
             (* n (call factorial (- n 1)))
         )

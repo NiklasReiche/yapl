@@ -2,7 +2,7 @@
 
 (global fact
     (func [n]
-        (if (= n 1)
+        (if (| (= n 1) (= n 0))
             1
             (* n (call fact [(- n 1)]))
         )

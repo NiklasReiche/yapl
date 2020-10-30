@@ -1,3 +1,0 @@
-(let [l (call cons [1 (call cons [2 (call cons [3 Nil])])])]
-    (call map [l (func [x] (* x x))])
-)

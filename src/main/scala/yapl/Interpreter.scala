@@ -32,7 +32,7 @@ object Interpreter {
             (env, s1)
         })
 
-    private def interp(expr: Expression, env: Env, store: Store[Value]): (Location, Store[Value]) = {
+    private def interp(expr: Expression, env: Env, store: Store[Value]): (Location, Store[Value]) =
         expr match {
             // Terminal expressions ------------------------------------------------------------------------------------
             case Num(n, _) => store.malloc(NumV(n))
@@ -142,6 +142,20 @@ object Interpreter {
                         throw new TypeError(test.meta.file, test.meta.line, s"Expected boolean value but got $v")
                 }
 
+            case Cond(branches, metaInfo) =>
+                var s = store
+                branches.find(b => {
+                    val (testLoc, s1) = interp(b._1, env, s)
+                    s = s1
+                    s.lookup(testLoc) match {
+                        case BoolV(b) => b
+                        case v => throw new TypeError(b._1.meta.file, b._1.meta.line, s"Expected boolean value but got $v")
+                    }
+                }) match {
+                    case Some((_, bodyExpr)) => interp(bodyExpr, env, s)
+                    case _ => (0, s)
+                }
+
             case Seq(statements, _) =>
                 statements.foldLeft((0: Location, store: Store[Value]))(
                     (acc, expr) => interp(expr, env, acc._2)
@@ -211,17 +225,19 @@ object Interpreter {
             case MethodCall(objExpr, methodId, args, meta) =>
                 val (objLoc, s1) = interp(objExpr, env, store)
                 s1.lookup(objLoc) match {
-                    case Object(ClassV(_, methods), _) => methods.get(methodId) match {
+                    case Object(ClassV(fields, methods), fieldValueLocations) => methods.get(methodId) match {
                         case c@Some(Closure(_, body, _)) =>
                             val (funcEnv, funcStore) = interpClosureCall(c.value, args, env, s1, meta)
-                            interp(body, funcEnv ++ Map(Symbol("this") -> objLoc), funcStore)
+                            val extendedFuncEnv = funcEnv concat
+                                (fields map (i => i.name) zip fieldValueLocations).toMap concat
+                                Map(Symbol("this") -> objLoc)
+                            interp(body, extendedFuncEnv, funcStore)
                         case None =>
                             throw new SemanticError(methodId.meta.file, methodId.meta.line, s"Object has no method with name ${methodId.name}")
                     }
                     case v => throw new TypeError(objExpr.meta.file, objExpr.meta.line, s"Expected object but got $v")
                 }
         }
-    }
 
     private def calcNAryOp[A](operands: List[A], op: (A, A) => A, neutralElement: A): A =
         operands.foldLeft(neutralElement)(op)

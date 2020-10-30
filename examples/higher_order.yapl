@@ -1,0 +1,3 @@
+(let [l (cons 1 (cons 2 (cons 3 Nil)))]
+    (map l (func [x] (* x x)))
+)

@@ -38,6 +38,7 @@ case class Func(params: List[Id], body: Expression, metaInfo: MetaInfo) extends 
 case class FunctionCall(fun: Expression, args: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
 case class If(test: Expression, ifCase: Expression, elseCase: Expression, metaInfo: MetaInfo) extends Expression(metaInfo)
+case class Cond(branches: List[(Expression, Expression)], metaInfo: MetaInfo) extends Expression(metaInfo)
 case class Seq(statements: List[Expression], metaInfo: MetaInfo) extends Expression(metaInfo)
 
 case class Class(fields: List[Id], methods: List[(Id, Expression)], metaInfo: MetaInfo) extends Expression(metaInfo)

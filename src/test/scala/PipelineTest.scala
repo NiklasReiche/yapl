@@ -108,6 +108,58 @@ class PipelineTest extends org.scalatest.FunSpec {
         }
     }
 
+    describe("cond") {
+        it("with else") {
+            assertResult(NumV(1)) {
+                Main.run(
+                    """
+                      |(cond
+                      | [false 5]
+                      | [true 1]
+                      | [else 3]
+                      |)""".stripMargin)
+            }
+            assertResult(NumV(5)) {
+                Main.run(
+                    """
+                      |(cond
+                      | [true 5]
+                      | [false 1]
+                      | [else 2]
+                      |)""".stripMargin)
+            }
+            assertResult(NumV(2)) {
+                Main.run(
+                    """
+                      |(cond
+                      | [false 5]
+                      | [false 1]
+                      | [else 2]
+                      |)""".stripMargin)
+            }
+        }
+        it("without else") {
+            assertResult(NumV(1)) {
+                Main.run(
+                    """
+                      |(cond
+                      | [false 4]
+                      | [true 1]
+                      |)
+                      |""".stripMargin)
+            }
+            assertResult(VoidV()) {
+                Main.run(
+                    """
+                      |(cond
+                      | [false 4]
+                      | [false 1]
+                      |)
+                      |""".stripMargin)
+            }
+        }
+    }
+
     describe("let") {
         it("single binding") {
             assertResult(NumV(6)) {
